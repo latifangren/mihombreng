@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useMihomoStatus } from "@/hooks/use-mihomo-status";
 import { useMihomoStats } from "@/hooks/use-mihomo-stats";
 import { StatusCard } from "@/components/status/status-card";
@@ -10,9 +11,13 @@ import { Terminal } from "@/components/terminal/terminal";
 import { SkeletonCard, SkeletonStatBox, Skeleton } from "@/components/ui/skeleton";
 import { formatBytes, formatDuration, formatTraffic } from "@/utils/format";
 import { useNavigate } from "react-router-dom";
+import { configApi } from "@/services/api";
+import type { AppConfig } from "@/types";
+import toast from "react-hot-toast";
 import {
   Activity,
   ArrowUpRight,
+  CircleAlert,
   Cpu,
   FileText,
   Globe,
@@ -78,6 +83,47 @@ export default function DashboardPage() {
   const { stats, error: statsError } = useMihomoStats();
   const navigate = useNavigate();
 
+  const [config, setConfig] = useState<AppConfig | null>(null);
+  const [updatingRouting, setUpdatingRouting] = useState(false);
+
+  useEffect(() => {
+    configApi.getConfig().then(setConfig).catch(console.error);
+  }, []);
+
+  const handleRoutingSwitch = async (tcp: string, udp: string) => {
+    if (!config) return;
+    setUpdatingRouting(true);
+    const loadingToast = toast.loading("Validating and applying routing...");
+    try {
+      const validation = await configApi.validateRouting({ TCP: tcp, UDP: udp });
+      if (!validation.valid) {
+        toast.error(`Validation failed: ${validation.issues.join(", ")}`, { id: loadingToast });
+        return;
+      }
+
+      const updated = {
+        ...config,
+        mihomo: {
+          ...config.mihomo,
+          Routing: {
+            ...config.mihomo.Routing,
+            TCP: tcp,
+            UDP: udp,
+          }
+        }
+      };
+
+      await configApi.updateConfig(updated);
+      setConfig(updated);
+      toast.success("Routing mode updated successfully", { id: loadingToast });
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update routing", { id: loadingToast });
+    } finally {
+      setUpdatingRouting(false);
+    }
+  };
+
   const isRunning = status.running;
   const isDegraded = isRunning && Boolean(statusError);
   const isOffline = !isRunning;
@@ -119,8 +165,25 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-3">
                   <span className={`h-3 w-3 rounded-full ${postureDot}`} />
                   <p className={`font-heading text-4xl uppercase tracking-wide ${postureTone}`}>{posture}</p>
-                </div>
-              </div>
+        </div>
+      </div>
+
+      {status.routing?.active && !status.routing.healthy && (
+        <div className="rounded-[12px] border-2 border-danger bg-danger/10 p-4 shadow-[4px_4px_0_#000] flex items-start gap-4 transition-all">
+          <CircleAlert className="h-6 w-6 text-danger shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h3 className="font-heading text-sm uppercase tracking-wide text-danger">Routing Block Detected</h3>
+            <p className="font-mono text-xs text-text leading-relaxed">
+              The Transparent Proxy validation loop detected a network blockage. Active connections through your transparent proxy routing mode may fail.
+            </p>
+            {status.routing.error && (
+              <p className="mt-1.5 font-mono text-[10px] text-text-muted bg-black/10 px-2 py-1 rounded inline-block border border-black/5">
+                Error details: {status.routing.error}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
               {status.version && (
                 <div className="pb-1">
                   <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Version</p>
@@ -222,7 +285,73 @@ export default function DashboardPage() {
 
         {/* System context */}
         <div className="space-y-4">
-          <h2 className="font-heading text-xs uppercase tracking-widest text-text-muted">System Context</h2>
+          <Card title="Routing Control" icon={<Globe className="h-4 w-4" />}>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Network Routing</p>
+                  <p className="font-heading text-sm uppercase tracking-wide">
+                    {status.routing?.active ? "Active" : "Disabled"}
+                  </p>
+                </div>
+                {status.routing?.active && (
+                  <span className={`inline-flex items-center gap-1.5 rounded-full border-2 border-black bg-background px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider ${status.routing.healthy ? "text-primary" : "text-danger"}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${status.routing.healthy ? "bg-primary animate-pulse" : "bg-danger"}`} />
+                    {status.routing.healthy ? `${status.routing.latency}ms` : "Unhealthy"}
+                  </span>
+                )}
+              </div>
+
+              {status.routing?.active && !status.routing.healthy && (
+                <div className="rounded-[8px] border-2 border-danger/40 bg-danger/5 p-2 font-mono text-[10px] text-danger leading-relaxed">
+                  <span className="font-heading uppercase block mb-1">Check Failure</span>
+                  {status.routing.error || "Outbound transparent proxy checks are failing."}
+                </div>
+              )}
+
+              {config ? (
+                <div className="space-y-3 pt-2 border-t-2 border-black/5">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className="block font-mono text-[9px] uppercase tracking-widest text-text-muted mb-1">
+                        TCP Mode
+                      </span>
+                      <select
+                        value={config.mihomo.Routing.TCP}
+                        disabled={updatingRouting}
+                        onChange={(e) => handleRoutingSwitch(e.target.value, config.mihomo.Routing.UDP)}
+                        className="w-full rounded-[6px] border-2 border-black bg-background px-2 py-1 font-mono text-xs text-text shadow-[2px_2px_0_#000] focus:outline-none"
+                      >
+                        {["tproxy", "tun", "redirect", "disable"].map((m) => (
+                          <option key={m} value={m}>{m.toUpperCase()}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <span className="block font-mono text-[9px] uppercase tracking-widest text-text-muted mb-1">
+                        UDP Mode
+                      </span>
+                      <select
+                        value={config.mihomo.Routing.UDP}
+                        disabled={updatingRouting}
+                        onChange={(e) => handleRoutingSwitch(config.mihomo.Routing.TCP, e.target.value)}
+                        className="w-full rounded-[6px] border-2 border-black bg-background px-2 py-1 font-mono text-xs text-text shadow-[2px_2px_0_#000] focus:outline-none"
+                      >
+                        {["tproxy", "tun", "disable"].map((m) => (
+                          <option key={m} value={m}>{m.toUpperCase()}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-2 text-center font-mono text-[10px] text-text-muted">
+                  Loading router settings...
+                </div>
+              )}
+            </div>
+          </Card>
+
           <Card title="Mihomo Runtime" icon={<TerminalSquare className="h-4 w-4" />}>
             <Terminal className="w-full" title="mihomo status">
               <div className="space-y-1.5 font-mono text-xs leading-5">

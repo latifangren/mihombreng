@@ -15,4 +15,6 @@ type MihomoService interface {
 	UpdateAppConfig(*config.MihomoConfig) error
 	GetLogs(lines int) ([]string, error)
 	ClearLogs() error
+	ValidateRouting(routingConfig config.RoutingConfig) (bool, []string)
+	GetRoutingHealth() (bool, string, int64)
 }

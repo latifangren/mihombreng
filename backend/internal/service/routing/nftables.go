@@ -2,11 +2,13 @@ package routing
 
 import (
 	"fmt"
+	"syscall"
 
 	"mihombreng/pkg/config"
 	"mihombreng/pkg/logger"
 
 	"github.com/sagernet/nftables"
+	"github.com/vishvananda/netlink"
 )
 
 type NftablesService struct {
@@ -130,4 +132,56 @@ func (n *NftablesService) CleanupAllRouting() error {
 
 func (n *NftablesService) IsTUNRoutingActive() bool {
 	return n.tunService.IsActive()
+}
+
+func (n *NftablesService) ValidateRouting(routingConfig config.RoutingConfig) (bool, []string) {
+	var issues []string
+	valid := true
+
+	// Check 1: Check for general privileges/nftables accessibility
+	conn, err := nftables.New()
+	if err != nil {
+		valid = false
+		issues = append(issues, fmt.Sprintf("nftables is not accessible (requires root/CAP_NET_ADMIN): %v", err))
+	} else {
+		// Just verify the connection
+		_ = conn
+	}
+
+	// Check 2: Check for routing table or interface conflicts if TUN is requested
+	if routingConfig.TCP == config.RoutingModeTUN || routingConfig.UDP == config.RoutingModeTUN {
+		// Check table 200 routes
+		routes, err := netlink.RouteList(nil, syscall.AF_INET)
+		if err == nil {
+			for _, r := range routes {
+				if r.Table == 200 {
+					issues = append(issues, "routing table 200 (TUN routing table) has existing OS routes, which may cause conflicts")
+					break
+				}
+			}
+		}
+	}
+
+	// Check 3: Check for routing table or interface checks if TProxy is requested
+	if routingConfig.TCP == config.RoutingModeTProxy || routingConfig.UDP == config.RoutingModeTProxy {
+		// Check table 80 routes
+		routes, err := netlink.RouteList(nil, syscall.AF_INET)
+		if err == nil {
+			for _, r := range routes {
+				if r.Table == 80 {
+					issues = append(issues, "routing table 80 (TProxy routing table) has existing OS routes, which may cause conflicts")
+					break
+				}
+			}
+		}
+
+		// Check if 'lo' interface exists
+		_, err = netlink.LinkByName("lo")
+		if err != nil {
+			valid = false
+			issues = append(issues, "loopback interface 'lo' not found, which is required for TProxy redirection")
+		}
+	}
+
+	return valid, issues
 }

@@ -7,4 +7,5 @@ type NftablesService interface {
 	SetupRouting(routingConfig config.RoutingConfig) error
 	CleanupAllRouting() error
 	IsTUNRoutingActive() bool
+	ValidateRouting(routingConfig config.RoutingConfig) (bool, []string)
 }

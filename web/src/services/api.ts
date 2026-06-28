@@ -303,6 +303,13 @@ export const configApi = {
     if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
     return res.json();
   },
+  async validateRouting(routing: { TCP: string; UDP: string; tun_device?: string }): Promise<{ valid: boolean; issues: string[] }> {
+    const r = await fetchApi<{ valid: boolean; issues: string[] }>("/api/v1/mihomo/routing/validate", {
+      method: "POST",
+      body: JSON.stringify(routing),
+    });
+    return r.data || { valid: false, issues: ["Failed to validate routing"] };
+  },
 };
 
 export const backupApi = {

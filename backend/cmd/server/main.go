@@ -62,6 +62,11 @@ func main() {
 	app.RedirectFixedPath = false
 
 	nftablesService := routing.NewNftablesService()
+	logger.Info("Executing pre-startup routing cleanup...")
+	if err := nftablesService.CleanupAllRouting(); err != nil {
+		logger.Debugf("Pre-startup routing cleanup warning: %v (expected if not on a Linux system with nftables)", err)
+	}
+
 	mihomoService := service.NewMihomoService(cfg, configPath, nftablesService)
 	subscriptionService := subscription.NewService(cfg.Mihomo.WorkingDir)
 
@@ -135,6 +140,11 @@ func main() {
 		if err := mihomoService.Stop(false); err != nil {
 			log.Printf("Failed to stop mihomo: %v", err)
 		}
+	}
+
+	log.Println("Executing final routing cleanup on shutdown...")
+	if err := nftablesService.CleanupAllRouting(); err != nil {
+		log.Printf("Final routing cleanup warning: %v (expected if not on a Linux system with nftables)", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

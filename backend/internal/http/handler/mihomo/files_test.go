@@ -26,6 +26,8 @@ func (m *MockMihomoService) GetStatus() string                                  
 func (m *MockMihomoService) GetUptime() int64                                        { return 0 }
 func (m *MockMihomoService) GetLogs(lines int) ([]string, error)                     { return nil, nil }
 func (m *MockMihomoService) ClearLogs() error                                        { return nil }
+func (m *MockMihomoService) ValidateRouting(r config.RoutingConfig) (bool, []string) { return true, nil }
+func (m *MockMihomoService) GetRoutingHealth() (bool, string, int64)                 { return true, "", 0 }
 
 func TestGetFiles(t *testing.T) {
 	gin.SetMode(gin.TestMode)

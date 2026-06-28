@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -23,6 +24,11 @@ type MihomoService struct {
 	configPath      string
 	nftablesService domain.NftablesService
 	startTime       time.Time
+
+	routingHealthy   bool
+	routingError     string
+	routingLatency   int64
+	routingCheckStop chan struct{}
 }
 
 func NewMihomoService(appConfig *config.Config, configPath string, nftablesService domain.NftablesService) *MihomoService {
@@ -30,6 +36,7 @@ func NewMihomoService(appConfig *config.Config, configPath string, nftablesServi
 		appConfig:       appConfig,
 		configPath:      configPath,
 		nftablesService: nftablesService,
+		routingHealthy:  true,
 	}
 }
 
@@ -187,6 +194,7 @@ func (s *MihomoService) Start() error {
 	}
 
 	logger.Info("Mihomo service started successfully")
+	s.startRoutingHealthCheck()
 	return nil
 }
 
@@ -196,6 +204,7 @@ func (s *MihomoService) Stop(saveState bool) error {
 
 func (s *MihomoService) stopWithRoutingCleanup(saveState bool, cleanupRouting config.RoutingConfig) error {
 	logger.Info("Stopping mihomo service")
+	s.stopRoutingHealthCheck()
 
 	if s.GetStatus() == "stopped" {
 		logger.Warn("Mihomo is already stopped")
@@ -272,13 +281,27 @@ func (s *MihomoService) Restart() error {
 
 func (s *MihomoService) RestartWithPreviousRouting(previousRouting config.RoutingConfig) error {
 	logger.Info("Restarting mihomo service")
+	newRouting := s.appConfig.Mihomo.Routing
+
 	err := s.stopWithRoutingCleanup(false, previousRouting)
 	if err != nil && s.GetStatus() != "stopped" {
 		logger.Errorf("Failed to stop mihomo: %v", err)
 		return fmt.Errorf("failed to stop mihomo: %w", err)
 	}
 
-	return s.Start()
+	err = s.Start()
+	if err != nil {
+		logger.Errorf("Failed to start mihomo with new routing configuration, rolling back to previous state: %v", err)
+		s.appConfig.Mihomo.Routing = previousRouting
+		if saveErr := s.appConfig.Save(s.configPath); saveErr != nil {
+			logger.Warnf("Failed to save rolled-back config: %v", saveErr)
+		}
+		_ = s.stopWithRoutingCleanup(false, newRouting)
+		_ = s.Start()
+		return fmt.Errorf("failed to start with new routing config: %w (rolled back to previous setting)", err)
+	}
+
+	return nil
 }
 
 func (s *MihomoService) GetAppConfig() *config.MihomoConfig {
@@ -304,6 +327,7 @@ func (s *MihomoService) RestoreState() error {
 			return s.Start()
 		}
 		logger.Info("Mihomo is already running")
+		s.startRoutingHealthCheck()
 	} else {
 		logger.Debug("Auto-start is disabled")
 	}
@@ -544,4 +568,80 @@ func (s *MihomoService) ClearLogs() error {
 	defer file.Close()
 
 	return nil
+}
+
+func (s *MihomoService) ValidateRouting(routingConfig config.RoutingConfig) (bool, []string) {
+	return s.nftablesService.ValidateRouting(routingConfig)
+}
+
+func (s *MihomoService) GetRoutingHealth() (bool, string, int64) {
+	return s.routingHealthy, s.routingError, s.routingLatency
+}
+
+func (s *MihomoService) startRoutingHealthCheck() {
+	if s.routingCheckStop != nil {
+		return
+	}
+
+	s.routingCheckStop = make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+
+		s.checkRoutingHealth()
+
+		for {
+			select {
+			case <-ticker.C:
+				s.checkRoutingHealth()
+			case <-s.routingCheckStop:
+				return
+			}
+		}
+	}()
+}
+
+func (s *MihomoService) stopRoutingHealthCheck() {
+	if s.routingCheckStop != nil {
+		close(s.routingCheckStop)
+		s.routingCheckStop = nil
+	}
+}
+
+func (s *MihomoService) checkRoutingHealth() {
+	if !s.shouldSetupRouting() {
+		s.routingHealthy = true
+		s.routingError = ""
+		s.routingLatency = 0
+		return
+	}
+
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	start := time.Now()
+	resp, err := client.Get("http://cp.cloudflare.com/generate_204")
+	latency := time.Since(start).Milliseconds()
+
+	if err != nil {
+		s.routingHealthy = false
+		s.routingError = fmt.Sprintf("Outbound routing check failed: %v", err)
+		s.routingLatency = 0
+		logger.Warnf("Routing health check failed: %s", s.routingError)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
+		s.routingHealthy = false
+		s.routingError = fmt.Sprintf("Outbound routing check returned status %d", resp.StatusCode)
+		s.routingLatency = 0
+		logger.Warnf("Routing health check failed: %s", s.routingError)
+		return
+	}
+
+	s.routingHealthy = true
+	s.routingError = ""
+	s.routingLatency = latency
 }

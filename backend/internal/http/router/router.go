@@ -82,6 +82,7 @@ func Setup(r *gin.Engine, mihomoService domain.MihomoService, cfg *config.Config
 			mihomoGroup.POST("/start", mihomoHandler.Start)
 			mihomoGroup.POST("/stop", mihomoHandler.Stop)
 			mihomoGroup.POST("/restart", mihomoHandler.Restart)
+			mihomoGroup.POST("/routing/validate", mihomoHandler.ValidateRouting)
 			mihomoGroup.GET("/logs", streamHandler.StreamMihomoLogs)
 			mihomoGroup.DELETE("/logs", streamHandler.ClearMihomoLogs)
 			mihomoGroup.GET("/memory", streamHandler.StreamMemory)

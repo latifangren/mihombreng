@@ -87,6 +87,26 @@ export default function SettingsPage() {
     void fetchData();
   }, [fetchData]);
 
+  const [validationIssues, setValidationIssues] = useState<string[]>([]);
+  const [validating, setValidating] = useState(false);
+
+  useEffect(() => {
+    if (!config) return;
+    const task = setTimeout(async () => {
+      setValidating(true);
+      try {
+        const res = await configApi.validateRouting(config.mihomo.Routing);
+        setValidationIssues(res.issues || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setValidating(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(task);
+  }, [config]);
+
   const handleChange = <K extends keyof MihomoConfig>(field: K, value: MihomoConfig[K]) => {
     if (!config) return;
     const next = { ...config, mihomo: { ...config.mihomo, [field]: value } };
@@ -116,6 +136,10 @@ export default function SettingsPage() {
 
   const handleSubmit = async () => {
     if (!config) return;
+    if (validationIssues.length > 0) {
+      toast.error("Cannot save configuration: Please resolve the routing validation issues first.");
+      return;
+    }
     setSaving(true);
     try {
       await configApi.updateConfig({
@@ -316,6 +340,26 @@ export default function SettingsPage() {
                 onChange={(v) => handleRoutingChange("UDP", v)}
               />
             </div>
+
+            {validating && (
+              <div className="mt-3 font-mono text-[9px] text-text-muted animate-pulse">
+                Validating routing configuration...
+              </div>
+            )}
+
+            {validationIssues.length > 0 && (
+              <div className="mt-3 rounded-[8px] border-2 border-danger bg-danger/10 p-3">
+                <span className="font-heading text-xs uppercase tracking-wide text-danger flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5" />
+                  Routing Validation Issues
+                </span>
+                <ul className="mt-1.5 list-disc list-inside font-mono text-[10px] text-danger space-y-1">
+                  {validationIssues.map((issue) => (
+                    <li key={issue}>{issue}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="mt-3 rounded-[8px] border-2 border-border bg-black/10 px-3 py-2">
               <div className="flex items-start gap-2">
                 <Shield className="mt-0.5 h-3.5 w-3.5 text-text-muted" />

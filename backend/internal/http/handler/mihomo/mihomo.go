@@ -181,12 +181,21 @@ func (h *MihomoHandler) GetStatus(c *gin.Context) {
 	if status == "running" {
 		cpu = h.readProcessCPUUsage()
 	}
+
+	healthy, checkErr, latency := h.mihomoService.GetRoutingHealth()
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
 			"running": status == "running",
 			"uptime":  h.mihomoService.GetUptime(),
 			"cpu":     cpu,
+			"routing": gin.H{
+				"active":  h.appConfig.Mihomo.Routing.TCP != config.RoutingModeDisable || h.appConfig.Mihomo.Routing.UDP != config.RoutingModeDisable,
+				"healthy": healthy,
+				"error":   checkErr,
+				"latency": latency,
+			},
 		},
 	})
 }
@@ -986,6 +995,32 @@ func (h *MihomoHandler) GetDashboardInfo(c *gin.Context) {
 			"port":       port,
 			"secret":     h.appConfig.Mihomo.APISecret,
 			"dashboards": availableDashboards,
+		},
+	})
+}
+
+// ValidateRouting godoc
+// @Summary Validate routing mode configuration
+// @Description Validate transparent proxy mode configuration before applying
+// @Tags Mihomo
+// @Accept json
+// @Produce json
+// @Param request body config.RoutingConfig true "Routing Configuration"
+// @Success 200 {object} map[string]interface{}
+// @Router /mihomo/routing/validate [post]
+func (h *MihomoHandler) ValidateRouting(c *gin.Context) {
+	var req config.RoutingConfig
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+
+	valid, issues := h.mihomoService.ValidateRouting(req)
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"valid":  valid,
+			"issues": issues,
 		},
 	})
 }

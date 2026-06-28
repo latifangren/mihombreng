@@ -4,6 +4,12 @@ export interface MihomoStatus {
   version?: string;
   memory?: number;
   cpu?: number;
+  routing?: {
+    active: boolean;
+    healthy: boolean;
+    error: string;
+    latency: number;
+  };
 }
 
 export interface ApiResponse<T> {

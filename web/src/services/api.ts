@@ -1,4 +1,4 @@
-import type { ApiResponse, MihomoStatus, AppConfig, DashboardInfo, ParseResponse, DnsLookupResponse, BackupEntry, BackupStatus, DiagnosticsResponse, ConfigValidationResult, SubscriptionProfile, SubscriptionProfileInput, TrafficMetrics, ConnectionsListResponse, RemoteBackupTarget, RemoteSyncStatus } from "@/types";
+import type { ApiResponse, MihomoStatus, AppConfig, DashboardInfo, ParseResponse, DnsLookupResponse, BackupEntry, BackupStatus, DiagnosticsResponse, ConfigValidationResult, SubscriptionProfile, SubscriptionProfileInput, TrafficMetrics, ConnectionsListResponse, RemoteBackupTarget, RemoteSyncStatus, UnlockTestTarget, UnlockTestResult } from "@/types";
 
 const API = "";
 
@@ -460,6 +460,25 @@ export const backupApi = {
       console.error(err);
       return { last_sync_time: "", last_sync_error: "", sync_count: 0, total_uploaded: 0 };
     }
+  },
+};
+
+export const unlockTestApi = {
+  async listUnlockTestTargets(): Promise<UnlockTestTarget[]> {
+    try {
+      const r = await fetchApi<UnlockTestTarget[]>("/api/v1/unlock-test/targets");
+      return r.data || [];
+    } catch (err) {
+      console.error(err);
+      return [];
+    }
+  },
+  async runUnlockTest(targetId?: string): Promise<UnlockTestResult | UnlockTestResult[]> {
+    const r = await fetchApi<UnlockTestResult | UnlockTestResult[]>("/api/v1/unlock-test/run", {
+      method: "POST",
+      body: JSON.stringify({ target_id: targetId }),
+    });
+    return r.data!;
   },
 };
 

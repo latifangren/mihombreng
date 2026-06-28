@@ -18,6 +18,7 @@ const DiagnosticsPage = lazy(() => import("@/app/diagnostics/page"));
 const SettingsPage = lazy(() => import("@/app/settings/page"));
 const TrafficPage = lazy(() => import("@/app/traffic/page"));
 const ConnectionsPage = lazy(() => import("@/app/connections/page"));
+const UnlockTestPage = lazy(() => import("@/app/unlock-test/page"));
 
 const Fallback = () => (
   <div className="flex items-center justify-center h-64">
@@ -66,6 +67,7 @@ export default function App() {
           <Route path="settings" element={<E><SettingsPage /></E>} />
           <Route path="traffic" element={<E><TrafficPage /></E>} />
           <Route path="connections" element={<E><ConnectionsPage /></E>} />
+          <Route path="unlock-test" element={<E><UnlockTestPage /></E>} />
         </Route>
       </Routes>
     </BrowserRouter>

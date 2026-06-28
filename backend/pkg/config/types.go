@@ -1,13 +1,14 @@
 package config
 
 type Config struct {
-	Version     string        `yaml:"version"`
-	Environment string        `yaml:"environment"`
-	Server      ServerConfig  `yaml:"server"`
-	Mihomo      MihomoConfig  `yaml:"mihomo"`
-	Logging     LoggingConfig `yaml:"logging"`
-	API         APIConfig     `yaml:"api"`
-	Backup      BackupConfig  `yaml:"backup"`
+	Version    string           `yaml:"version"`
+	Environment string          `yaml:"environment"`
+	Server     ServerConfig     `yaml:"server"`
+	Mihomo     MihomoConfig     `yaml:"mihomo"`
+	Logging    LoggingConfig    `yaml:"logging"`
+	API        APIConfig        `yaml:"api"`
+	Backup     BackupConfig     `yaml:"backup"`
+	UnlockTest UnlockTestConfig `yaml:"unlock_test"`
 }
 
 type ServerConfig struct {
@@ -84,4 +85,17 @@ type RemoteBackupTarget struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
 	Enabled  bool   `yaml:"enabled"`
+}
+
+type UnlockTestConfig struct {
+	Targets []UnlockTestTargetConfig `yaml:"targets"`
+}
+
+type UnlockTestTargetConfig struct {
+	ID       string `yaml:"id" json:"id"`
+	Name     string `yaml:"name" json:"name"`
+	URL      string `yaml:"url,omitempty" json:"url,omitempty"`
+	Host     string `yaml:"host,omitempty" json:"host,omitempty"`
+	Expected int    `yaml:"expected,omitempty" json:"expected,omitempty"`
+	Type     string `yaml:"type" json:"type"` // "http", "tcp", "dns"
 }

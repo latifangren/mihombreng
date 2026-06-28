@@ -15,6 +15,7 @@ import {
   CircleAlert,
   Clock,
   Loader2,
+  Globe,
 } from "lucide-react";
 import type { MihomoStatus } from "@/types";
 
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { to: "/profiles", label: "Profiles", icon: RadioTower },
   { to: "/traffic", label: "Traffic", icon: Activity },
   { to: "/connections", label: "Connections", icon: Network },
+  { to: "/unlock-test", label: "Unlock Test", icon: Globe },
   { to: "/logs", label: "Logs", icon: ScrollText },
   { to: "/tools", label: "Tools", icon: Wrench },
   { to: "/backup", label: "Backup", icon: Archive },

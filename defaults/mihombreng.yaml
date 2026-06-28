@@ -59,3 +59,65 @@ backup:
       username: "user"
       password: "password"
       enabled: false
+
+unlock_test:
+  targets:
+    - id: "netflix"
+      name: "Netflix"
+      url: "https://www.netflix.com/title/80018499"
+      expected: 200
+      type: "http"
+    - id: "chatgpt_ios"
+      name: "ChatGPT iOS"
+      url: "https://ios.chat.openai.com/public-api/mobile-sdk/config"
+      expected: 200
+      type: "http"
+    - id: "chatgpt_web"
+      name: "ChatGPT Web"
+      url: "https://chatgpt.com"
+      expected: 200
+      type: "http"
+    - id: "claude"
+      name: "Claude"
+      url: "https://claude.ai"
+      expected: 200
+      type: "http"
+    - id: "disneyplus"
+      name: "Disney+"
+      url: "https://www.disneyplus.com"
+      expected: 200
+      type: "http"
+    - id: "gemini"
+      name: "Gemini"
+      url: "https://gemini.google.com"
+      expected: 200
+      type: "http"
+    - id: "primevideo"
+      name: "Prime Video"
+      url: "https://www.primevideo.com"
+      expected: 200
+      type: "http"
+    - id: "spotify"
+      name: "Spotify"
+      url: "https://www.spotify.com"
+      expected: 200
+      type: "http"
+    - id: "tiktok"
+      name: "TikTok"
+      url: "https://www.tiktok.com"
+      expected: 200
+      type: "http"
+    - id: "youtube_premium"
+      name: "YouTube Premium"
+      url: "https://www.youtube.com/premium"
+      expected: 200
+      type: "http"
+    - id: "cloudflare"
+      name: "Cloudflare CDN"
+      url: "https://1.1.1.1"
+      expected: 200
+      type: "http"
+    - id: "telegram"
+      name: "Telegram Web"
+      host: "web.telegram.org:443"
+      type: "tcp"

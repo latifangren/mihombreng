@@ -258,3 +258,20 @@ export interface ConnectionsListResponse {
   downloadTotal: number;
   uploadTotal: number;
 }
+
+export interface UnlockTestTarget {
+  id: string;
+  name: string;
+  url?: string;
+  host?: string;
+  expected?: number;
+  type: "http" | "tcp" | "dns";
+}
+
+export interface UnlockTestResult {
+  id: string;
+  status: "Yes" | "No" | "Failed";
+  region?: string;
+  checked_at: string;
+  message?: string;
+}

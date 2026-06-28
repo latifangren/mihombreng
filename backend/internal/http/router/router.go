@@ -9,7 +9,9 @@ import (
 	"mihombreng/internal/http/handler/mihomo"
 	"mihombreng/internal/http/handler/stream"
 	subhandler "mihombreng/internal/http/handler/subscription"
+	unlockhandler "mihombreng/internal/http/handler/unlocktest"
 	"mihombreng/internal/http/middleware"
+	unlockservice "mihombreng/internal/service/unlocktest"
 	subdomain "mihombreng/internal/subscription"
 	"mihombreng/pkg/config"
 
@@ -30,6 +32,8 @@ func Setup(r *gin.Engine, mihomoService domain.MihomoService, cfg *config.Config
 	converterHandler := converter.NewConverterHandler()
 	dnsHandler := dns.NewDNSHandler()
 	subscriptionHandler := subhandler.NewHandler(subscriptionService)
+	unlockService := unlockservice.NewService(cfg, configPath)
+	unlockHandler := unlockhandler.NewHandler(unlockService)
 
 	api := r.Group("/api/v1")
 	api.Use(middleware.TokenAuth(cfg.API.AuthToken))
@@ -64,6 +68,12 @@ func Setup(r *gin.Engine, mihomoService domain.MihomoService, cfg *config.Config
 		dnsGroup := api.Group("/dns")
 		{
 			dnsGroup.POST("/lookup", dnsHandler.LookupDomain)
+		}
+
+		unlockGroup := api.Group("/unlock-test")
+		{
+			unlockGroup.GET("/targets", unlockHandler.GetTargets)
+			unlockGroup.POST("/run", unlockHandler.RunTest)
 		}
 
 		subscriptionGroup := api.Group("/subscriptions")

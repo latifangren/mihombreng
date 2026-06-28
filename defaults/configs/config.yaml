@@ -128,26 +128,26 @@ rule-providers: #change this to your own rule provider file path if you want to 
     type: http
     behavior: classical
     url: https://raw.githubusercontent.com/latifangren/ohmy-mihomo/refs/heads/main/clash/rule_provider/lite-block.yaml
-    path: ./rule_provider/lite-block.yaml
+    path: ./rule_providers/lite-block.yaml
     interval: 86400
     download-detour: DIRECT
   Streaming:
     type: http
     behavior: classical
     url: https://raw.githubusercontent.com/latifangren/CLASH-CONFIG-by-Latifan/main/rule_provider/streaming.yaml
-    path: ./rule_provider/streaming.yaml
+    path: ./rule_providers/streaming.yaml
     interval: 86400
   Speedtest:
     type: http
     behavior: classical
     url: https://raw.githubusercontent.com/latifangren/clash-verge-windows-config/refs/heads/main/rule_provider/speedtest.yaml
-    path: ./rule_provider/speedtest.yaml
+    path: ./rule_providers/speedtest.yaml
     interval: 86400
   Games:
     type: http
     behavior: classical
     url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Game/Game.yaml
-    path: ./rule_provider/games.yaml
+    path: ./rule_providers/games.yaml
     interval: 86400
 proxy-groups: #change this to your own proxy group configuration
 - name: ID

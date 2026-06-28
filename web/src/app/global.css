@@ -1,0 +1,84 @@
+@import "tailwindcss";
+@source "../components";
+@source "../app";
+@source "../hooks";
+
+@theme {
+  --color-background: #1a1a1a;
+  --color-surface: #2a2a2a;
+  --color-surface-hover: #333;
+  --color-border: #333;
+  --color-border-strong: #000;
+  --color-primary: #0ca95b;
+  --color-primary-hover: #0bb852;
+  --color-primary-active: #099349;
+  --color-warning: #fcba28;
+  --color-danger: #f33;
+  --color-danger-hover: #e62e2e;
+  --color-info: #14b6e5;
+  --color-text: #f9f4da;
+  --color-text-muted: #888;
+  --color-accent-1: #0ca95b;
+  --color-accent-2: #fcba28;
+  --color-accent-3: #14b6e5;
+  --font-heading: "Archivo Black", sans-serif;
+  --font-body: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Terminal cursor blink */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+.terminal-cursor::after {
+  content: "▊";
+  animation: blink 1s step-end infinite;
+}
+
+/* Floating shape animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-10px) rotate(1deg); }
+  66% { transform: translateY(5px) rotate(-1deg); }
+}
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-15px) rotate(2deg); }
+}
+.floating-shape {
+  animation: float 6s ease-in-out infinite;
+}
+.floating-shape-slow {
+  animation: float-slow 8s ease-in-out infinite;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}

@@ -1,0 +1,45 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+mihombreng
+main
+bin/
+
+# Test / Coverage
+*.test
+*.out
+
+# Go workspace
+go.work
+vendor/
+
+# Air hot reload
+tmp/
+tmp/main
+tmp/build-errors.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Config (user-specific, don't commit)
+config.yaml
+*.env
+
+# Temp
+*.bak
+*.backup
+*.tmp

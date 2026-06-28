@@ -1,0 +1,48 @@
+# ── OS ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── IDE / Editor ───────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# ── Environment / Secrets ──────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Go ─────────────────────────────────────────────────────
+backend/bin/
+backend/internal/ui/dist/
+
+# ── Node / Frontend ────────────────────────────────────────
+web/node_modules/
+web/dist/
+web/vite.err
+
+# ── Build Artifacts ────────────────────────────────────────
+build/
+core/
+
+# ── Dev Tools ──────────────────────────────────────────────
+.playwright-mcp/
+scripts/.gitkeep
+.plan/
+
+# ── Misc ───────────────────────────────────────────────────
+*.log
+*.tmp
+*.bak
+/.agent
+/.opencode
+/openspec
+
+# ── CodeGraph / Slim ──
+.codegraph/
+.slim/
+

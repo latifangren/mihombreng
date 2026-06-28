@@ -1,0 +1,196 @@
+mode: rule
+port: 7890
+redir-port: 7891
+socks-port: 7892
+mixed-port: 7893
+tproxy-port: 7894
+allow-lan: true
+bind-address: '*'
+routing-mark: 0x100
+log-level: silent
+ipv6: false
+external-controller: 0.0.0.0:9090
+external-ui: ui #change this to your own path if you want to use a custom web UI or update to ui/metacubexd or another web UI if you want to use a custom web UI
+secret: "mihombreng" #change this to your own password
+external-controller-cors:
+  allow-private-network: true
+  allow-origins:
+  - tauri://localhost
+  - http://tauri.localhost
+  - https://yacd.metacubex.one
+  - https://metacubex.github.io
+  - https://board.zash.run.place
+experimental:
+  ignore-resolve-fail: true
+  sniff-tls-sni: true
+  tracing: false
+  tcp-concurrent: true
+  udp-fallback-policy: DIRECT
+  prefer-dns-server: null
+dns:
+  enable: true
+  ipv6: false
+  prefer-h3: true
+  listen: 0.0.0.0:1053
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+  - '*.lan'
+  - '*.local'
+  - +.n.n.srv.nintendo.net
+  - +.srv.nintendo.net
+  - +.ntp.org.cn
+  - +.pool.ntp.org
+  - ntp.ubuntu.com
+  - time.windows.com
+  - xbox.*.microsoft.com
+  - '*.*.xboxlive.com'
+  - +.*
+  - '*.msftconnecttest.com'
+  - '*.msftncsi.com'
+  nameserver:
+  - https://cloudflare-dns.com/dns-query
+  - https://dns.google/dns-query
+  fallback:
+  - 1.1.1.1
+  - 8.8.8.8
+  - 9.9.9.9
+  fallback-filter:
+    geoip: true
+    geoip-code: ID
+    ipcidr:
+    - 0.0.0.0/8
+    - 10.0.0.0/8
+    - 100.64.0.0/10
+    - 127.0.0.0/8
+    - 169.254.0.0/16
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    - 224.0.0.0/4
+    - 240.0.0.0/4
+  proxy-server-nameserver:
+  - 1.1.1.1
+  - 8.8.8.8
+geodata-mode: true
+geodata-loader: memconservative
+global-client-fingerprint: chrome
+geox-url:
+  mmdb: https://github.com/rizkikotet-dev/GeoSite-WRT/releases/download/latest/country.mmdb
+  geoip: https://github.com/rizkikotet-dev/GeoSite-WRT/releases/download/latest/geoip.dat
+  geosite: https://github.com/rizkikotet-dev/GeoSite-WRT/releases/download/latest/geosite.dat
+ntp:
+  enable: true
+  server: time.apple.com
+  port: 123
+  interval: 30
+  write-to-system: true
+authentication:
+keep-alive-interval: 15
+tcp-concurrent: true
+unified-delay: true
+tun:
+  enable: true
+  stack: gvisor
+  device: Meta
+  dns-hijack:
+    - any:53
+sniffer:
+  enable: true
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+    TLS:
+      ports: [443, 8443]
+  skip-domain:
+    - '+.microsoft.com'
+    - '+.windows.com'
+profile:
+  store-selected: true
+  store-fake-ip: true
+proxy-providers: #change this to your own proxy provider file path if you want to use a custom proxy provider
+  ID:
+    type: file
+    path: ./proxy_providers/id.yaml #change this to your own proxy provider file path
+    health-check:
+      enable: true
+      url: http://www.gstatic.com/generate_204
+      interval: 300
+  SG:
+    type: file
+    path: ./proxy_providers/sg.yaml #change this to your own proxy provider file path
+    health-check:
+      enable: true
+      url: http://www.gstatic.com/generate_204
+      interval: 300     
+rule-providers: #change this to your own rule provider file path if you want to use a custom rule provider
+  AdBlock:
+    type: http
+    behavior: classical
+    url: https://raw.githubusercontent.com/latifangren/ohmy-mihomo/refs/heads/main/clash/rule_provider/lite-block.yaml
+    path: ./rule_provider/lite-block.yaml
+    interval: 86400
+    download-detour: DIRECT
+  Streaming:
+    type: http
+    behavior: classical
+    url: https://raw.githubusercontent.com/latifangren/CLASH-CONFIG-by-Latifan/main/rule_provider/streaming.yaml
+    path: ./rule_provider/streaming.yaml
+    interval: 86400
+  Speedtest:
+    type: http
+    behavior: classical
+    url: https://raw.githubusercontent.com/latifangren/clash-verge-windows-config/refs/heads/main/rule_provider/speedtest.yaml
+    path: ./rule_provider/speedtest.yaml
+    interval: 86400
+  Games:
+    type: http
+    behavior: classical
+    url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Game/Game.yaml
+    path: ./rule_provider/games.yaml
+    interval: 86400
+proxy-groups: #change this to your own proxy group configuration
+- name: ID
+  type: select
+  use:
+  - ID
+- name: SG
+  type: select
+  use:
+  - SG
+- name: general
+  type: select
+  disable-udp: false
+  proxies:
+  - DIRECT
+- name: AdBlock
+  type: select
+  proxies:
+  - REJECT
+  - DIRECT
+- name: STREAMING
+  type: select
+  proxies:
+  - DIRECT
+  - REJECT
+- name: GAMES
+  type: select
+  proxies:
+  - DIRECT
+  - REJECT
+- name: SPEEDTEST
+  type: select
+  proxies:
+  - DIRECT
+  - REJECT
+- name: GLOBAL
+  type: select
+  proxies:
+  - DIRECT
+  - REJECT
+rules:
+  - AdBlock,AdBlock
+  - Streaming,STREAMING
+  - Games,GAMES
+  - Speedtest,SPEEDTEST
+  - MATCH,Global

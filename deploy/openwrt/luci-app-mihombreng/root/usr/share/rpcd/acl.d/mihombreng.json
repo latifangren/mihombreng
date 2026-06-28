@@ -1,0 +1,31 @@
+{
+    "luci-app-mihombreng": {
+        "description": "Grant access to Mihombreng status and control",
+        "read": {
+            "ubus": {
+                "service": [
+                    "list"
+                ]
+            },
+            "file": {
+                "/etc/init.d/mihombreng": [
+                    "read"
+                ]
+            }
+        },
+        "write": {
+            "file": {
+                "/etc/init.d/mihombreng": [
+                    "exec"
+                ]
+            },
+            "ubus": {
+                "service": [
+                    "start",
+                    "stop",
+                    "delete"
+                ]
+            }
+        }
+    }
+}

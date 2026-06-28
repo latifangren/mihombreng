@@ -1,0 +1,13 @@
+.git
+.github
+.gitignore
+*.md
+img
+build
+scripts
+docs
+defaults
+backend/docs
+backend/.air.toml
+backend/internal/ui/dist
+node_modules

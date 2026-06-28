@@ -1,0 +1,25 @@
+# Force LF for files that must be Unix-formatted
+*.sh        text eol=lf
+*.bash      text eol=lf
+Makefile    text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+
+# Docker
+Dockerfile  text eol=lf
+.dockerignore text eol=lf
+
+# Systemd
+*.service   text eol=lf
+
+# Go
+*.go        text eol=lf
+go.mod      text eol=lf
+go.sum      text eol=lf
+
+# Frontend
+*.ts        text eol=lf
+*.tsx       text eol=lf
+*.css       text eol=lf
+*.json      text eol=lf
+*.html      text eol=lf

@@ -1,0 +1,70 @@
+name: Publish Release from Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (e.g., v1.0.0 or v1.0.0-beta.1)'
+        required: true
+        default: 'v1.0.0'
+      workflow_run_id:
+        description: 'Workflow Run ID (from build-package.yml)'
+        required: true
+      release_notes:
+        description: 'Additional Release Notes (optional)'
+        required: false
+        default: ''
+
+jobs:
+  publish:
+    name: Publish Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download All Artifacts from Build Run
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          run_id: ${{ inputs.workflow_run_id }}
+          name: mihombreng-all-packages
+          path: downloaded
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List Downloaded Artifacts
+        run: |
+          echo "📦 Downloaded artifacts:"
+          ls -lhR downloaded/
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.tag_name }}
+          body: |
+            # Mihombreng Release ${{ inputs.tag_name }}
+            
+            ${{ inputs.release_notes }}
+
+            This release contains pre-built packages for OpenWrt, Debian/Ubuntu, Arch Linux, and standalone core binaries.
+
+            ## Package Details
+            - **OpenWrt**: `.ipk` (24.10) and `.apk` (25.12) packages
+            - **Debian/Ubuntu**: `.deb` packages for `amd64`, `arm64`, `armhf`
+            - **Arch Linux**: `.pkg.tar.zst` packages for `x86_64`, `aarch64`, `armv7h`
+            - **Core Binaries**: Standalone binaries for all architectures (useful for other Linux distros)
+
+            See [README](https://github.com/${{ github.repository }}) for full documentation.
+          files: downloaded/**/*
+          draft: false
+          prerelease: ${{ contains(inputs.tag_name, '-dev') || contains(inputs.tag_name, '-beta') || contains(inputs.tag_name, '-alpha') || contains(inputs.tag_name, '-rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "✅ Release ${{ inputs.tag_name }} published successfully!"
+          echo "🔗 View release: https://github.com/${{ github.repository }}/releases/tag/${{ inputs.tag_name }}"

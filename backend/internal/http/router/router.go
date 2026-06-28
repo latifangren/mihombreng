@@ -133,6 +133,7 @@ func Setup(r *gin.Engine, mihomoService domain.MihomoService, cfg *config.Config
 			})
 			mihomoGroup.GET("/active-config", mihomoFilesHandler.GetActiveConfigPath)
 			mihomoGroup.PUT("/active-config", mihomoFilesHandler.SetActiveConfigPath)
+			mihomoGroup.POST("/providers/sync", mihomoFilesHandler.SyncProvider)
 
 			mihomoGroup.GET("/proxy-providers", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "proxy_providers"})
@@ -208,6 +209,7 @@ func Setup(r *gin.Engine, mihomoService domain.MihomoService, cfg *config.Config
 			appGroup.GET("/logs", streamHandler.StreamAppLogs)
 			appGroup.DELETE("/logs", streamHandler.ClearAppLogs)
 			appGroup.GET("/diagnostics", appHandler.Diagnostics)
+			appGroup.POST("/diagnostics/recover", appHandler.RecoverDiagnostics)
 			appGroup.GET("/ipv4", appHandler.GetIPv4)
 			appGroup.GET("/ipv6", appHandler.GetIPv6)
 			appGroup.GET("/geo/ipv4", appHandler.GetGeoIPv4)

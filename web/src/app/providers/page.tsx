@@ -151,6 +151,7 @@ function MetaTile({ label, value, tone = "text-text", detail }: { label: string;
 export default function ProvidersPage() {
   const [proxyProviders, setProxyProviders] = useState<string[]>([]);
   const [ruleProviders, setRuleProviders] = useState<string[]>([]);
+  const [providerErrors, setProviderErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -171,18 +172,19 @@ export default function ProvidersPage() {
     if (mode === "init") setLoading(true);
     if (mode === "refresh") setRefreshing(true);
     try {
-      const [proxy, rule] = await Promise.all([
+      const [proxyRes, ruleRes] = await Promise.all([
         mihomoApi.getProxyProviders(),
         mihomoApi.getRuleProviders(),
       ]);
-      setProxyProviders(proxy);
-      setRuleProviders(rule);
+      setProxyProviders(proxyRes.data);
+      setRuleProviders(ruleRes.data);
+      setProviderErrors({ ...proxyRes.errors, ...ruleRes.errors });
       setLastLoadedAt(new Date());
       setLoadError(null);
 
       setSelected((prev) => {
         if (!prev) return null;
-        const source = prev.kind === "proxy" ? proxy : rule;
+        const source = prev.kind === "proxy" ? proxyRes.data : ruleRes.data;
         return source.includes(prev.name) ? { ...prev, content: prev.content } : null;
       });
       if (mode === "refresh") toast.success("Providers refreshed");
@@ -328,6 +330,21 @@ export default function ProvidersPage() {
     }
   };
 
+  const handleSync = async (kind: ProviderKind, name: string) => {
+    const dir = kind === "proxy" ? "proxy_providers" : "rule_providers";
+    setBusyAction(`sync-${kind}-${name}`);
+    const loadingToast = toast.loading(`Syncing provider ${name}...`);
+    try {
+      await mihomoApi.syncProvider(dir, name);
+      toast.success("Provider synced successfully", { id: loadingToast });
+      void loadProviders("refresh");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to sync provider", { id: loadingToast });
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
   const selectedMeta = useMemo(() => {
     if (!selected?.content) return null;
     return inferProviderMeta(selected.content);
@@ -467,19 +484,30 @@ export default function ProvidersPage() {
                                   className={`rounded-[12px] border-2 p-4 transition-all ${active ? "border-primary bg-primary/10 shadow-[6px_6px_0_#000]" : "border-black bg-black/10 hover:bg-black/20"}`}
                                 >
                                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                                    <button type="button" onClick={() => void loadContent(section.kind, name)} className="min-w-0 text-left">
+                                    <button type="button" onClick={() => void loadContent(section.kind, name)} className="min-w-0 text-left w-full sm:w-auto">
                                       <div className="flex flex-wrap items-center gap-2">
                                         <p className="break-all font-heading text-sm uppercase tracking-wide text-text">{name}</p>
                                         <Badge variant={section.badge}>{section.kind}</Badge>
                                         {active && <Badge variant="info">selected</Badge>}
+                                        {providerErrors[name] && <Badge variant="danger">sync error</Badge>}
                                       </div>
                                       <p className="mt-2 break-all font-mono text-xs text-text-muted">{providerPath(section.kind, name)}</p>
                                       <p className="mt-1 font-mono text-xs text-text-muted">Preview before rename, download, or delete.</p>
+                                      {providerErrors[name] && (
+                                        <div className="mt-2.5 rounded-[8px] border-2 border-danger/45 bg-danger/5 px-2.5 py-1.5 font-mono text-[10px] text-danger leading-relaxed">
+                                          <span className="font-heading uppercase block mb-0.5">Sync Error</span>
+                                          {providerErrors[name]}
+                                        </div>
+                                      )}
                                     </button>
                                     <div className="flex flex-wrap gap-2">
                                       <RetroBtn size="sm" variant="ghost" onClick={() => void loadContent(section.kind, name)} loading={previewLoading && active}>
                                         <Eye className="mr-1.5 inline-block h-3.5 w-3.5" />
                                         Preview
+                                      </RetroBtn>
+                                      <RetroBtn size="sm" variant="ghost" onClick={() => void handleSync(section.kind, name)} loading={busyAction === `sync-${section.kind}-${name}`}>
+                                        <RefreshCcw className="mr-1.5 inline-block h-3.5 w-3.5" />
+                                        Sync
                                       </RetroBtn>
                                       <RetroBtn size="sm" variant="ghost" onClick={() => { setRenameTarget({ kind: section.kind, name }); setRenameValue(name); }}>
                                         <Pencil className="mr-1.5 inline-block h-3.5 w-3.5" />

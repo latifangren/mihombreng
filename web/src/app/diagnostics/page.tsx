@@ -75,6 +75,13 @@ function DiagnosticsSkeleton() {
   );
 }
 
+const recoveryTargets: Record<string, string> = {
+  "mihomo-status": "mihomo",
+  "mihomo-api": "mihomo",
+  "outbound-ipv4": "firewall",
+  "dns-lookup": "dns",
+};
+
 export default function DiagnosticsPage() {
   const [checks, setChecks] = useState<DiagnosticsCheck[]>([]);
   const [generatedAt, setGeneratedAt] = useState("");
@@ -83,6 +90,21 @@ export default function DiagnosticsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copiedCheckId, setCopiedCheckId] = useState<string | null>(null);
+  const [recoveringId, setRecoveringId] = useState<string | null>(null);
+
+  const handleRecover = async (target: string, checkId: string) => {
+    setRecoveringId(checkId);
+    const loadingToast = toast.loading(`Initiating recovery for ${target}...`);
+    try {
+      await configApi.recoverDiagnostics(target);
+      toast.success("Recovery initiated successfully", { id: loadingToast });
+      setTimeout(() => void load("refresh"), 1500);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to trigger recovery", { id: loadingToast });
+    } finally {
+      setRecoveringId(null);
+    }
+  };
 
   const load = useCallback(async (mode: "init" | "refresh" = "init") => {
     if (mode === "init") setLoading(true);
@@ -247,10 +269,22 @@ export default function DiagnosticsPage() {
                       {check.details && <p className="mt-2 break-words font-mono text-xs text-text-muted">{check.details}</p>}
                       {check.action && <p className="mt-3 font-mono text-xs text-warning">Next: {check.action}</p>}
                     </div>
-                    <RetroBtn size="sm" variant={copiedCheckId === check.id ? "primary" : "ghost"} onClick={() => void copyCheck(check)}>
-                      <Copy className="mr-1.5 inline-block h-3.5 w-3.5" />
-                      {copiedCheckId === check.id ? "Copied" : "Copy"}
-                    </RetroBtn>
+                    <div className="flex gap-2 shrink-0">
+                      <RetroBtn size="sm" variant={copiedCheckId === check.id ? "primary" : "ghost"} onClick={() => void copyCheck(check)}>
+                        <Copy className="mr-1.5 inline-block h-3.5 w-3.5" />
+                        {copiedCheckId === check.id ? "Copied" : "Copy"}
+                      </RetroBtn>
+                      {check.severity !== "success" && recoveryTargets[check.id] && (
+                        <RetroBtn
+                          size="sm"
+                          variant="warning"
+                          loading={recoveringId === check.id}
+                          onClick={() => void handleRecover(recoveryTargets[check.id], check.id)}
+                        >
+                          Recover
+                        </RetroBtn>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

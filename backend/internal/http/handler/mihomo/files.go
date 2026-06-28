@@ -2,15 +2,21 @@ package mihomo
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"mihombreng/internal/domain"
 	"mihombreng/pkg/config"
+	"mihombreng/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"gopkg.in/yaml.v3"
@@ -37,6 +43,29 @@ func (h *MihomoFilesHandler) validateDir(dirName string) bool {
 func isYAMLFile(name string) bool {
 	ext := filepath.Ext(name)
 	return ext == ".yaml" || ext == ".yml"
+}
+
+var (
+	lineColRegex = regexp.MustCompile(`(?i)(?:line|Line)\s+(\d+)(?:,\s+column\s+(\d+))?`)
+)
+
+var (
+	providerErrorsMu sync.RWMutex
+	providerErrors   = make(map[string]string)
+)
+
+func parseErrorLineCol(errStr string) (int, int) {
+	matches := lineColRegex.FindStringSubmatch(errStr)
+	if len(matches) < 2 {
+		return 0, 0
+	}
+
+	line, _ := strconv.Atoi(matches[1])
+	col := 0
+	if len(matches) > 2 && matches[2] != "" {
+		col, _ = strconv.Atoi(matches[2])
+	}
+	return line, col
 }
 
 type ConfigValidationIssue struct {
@@ -87,7 +116,18 @@ func (h *MihomoFilesHandler) GetFiles(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": fileNames})
+	providerErrorsMu.RLock()
+	errorsCopy := make(map[string]string)
+	for k, v := range providerErrors {
+		errorsCopy[k] = v
+	}
+	providerErrorsMu.RUnlock()
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    fileNames,
+		"errors":  errorsCopy,
+	})
 }
 
 // GetFileContent godoc
@@ -297,10 +337,14 @@ func (h *MihomoFilesHandler) ValidateConfig(c *gin.Context) {
 	if err := decoder.Decode(&parsed); err != nil {
 		result.Valid = false
 		result.Summary = "YAML syntax error"
+		errStr := err.Error()
+		ln, col := parseErrorLineCol(errStr)
 		result.Issues = append(result.Issues, ConfigValidationIssue{
 			Level:   "error",
 			Source:  "yaml",
-			Message: err.Error(),
+			Message: errStr,
+			Line:    ln,
+			Column:  col,
 		})
 		c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
 		return
@@ -353,10 +397,13 @@ func (h *MihomoFilesHandler) ValidateConfig(c *gin.Context) {
 		if msg == "" {
 			msg = err.Error()
 		}
+		ln, col := parseErrorLineCol(msg)
 		result.Issues = append(result.Issues, ConfigValidationIssue{
 			Level:   "error",
 			Source:  "mihomo",
 			Message: msg,
+			Line:    ln,
+			Column:  col,
 		})
 		c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
 		return
@@ -700,4 +747,133 @@ func isPathSafe(path string, basePath string) bool {
 	}
 
 	return !filepath.IsAbs(relPath) && !strings.HasPrefix(relPath, "..")
+}
+
+type SyncProviderRequest struct {
+	Dir      string `json:"dir" binding:"required"`
+	Filename string `json:"filename" binding:"required"`
+}
+
+// SyncProvider godoc
+// @Summary Sync a proxy or rule provider from remote URL
+// @Description Validate and pull updates for a specific provider
+// @Tags Mihomo files
+// @Accept json
+// @Produce json
+// @Param request body SyncProviderRequest true "Sync Request"
+// @Success 200 {object} map[string]interface{}
+// @Router /mihomo/providers/sync [post]
+func (h *MihomoFilesHandler) SyncProvider(c *gin.Context) {
+	var req SyncProviderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+
+	if req.Dir != "proxy_providers" && req.Dir != "rule_providers" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid provider directory"})
+		return
+	}
+
+	filePath := filepath.Join(h.appConfig.Mihomo.WorkingDir, req.Dir, req.Filename)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "error": "provider file not found: " + err.Error()})
+		return
+	}
+
+	var parsed map[string]any
+	if err := yaml.Unmarshal(data, &parsed); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "failed to parse provider YAML: " + err.Error()})
+		return
+	}
+
+	subURLVal, ok := parsed["url"]
+	if !ok || subURLVal == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "provider does not contain 'url' key for sync"})
+		return
+	}
+
+	subURL := fmt.Sprintf("%v", subURLVal)
+	if !strings.HasPrefix(subURL, "http://") && !strings.HasPrefix(subURL, "https://") {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "invalid http/https provider url"})
+		return
+	}
+
+	logger.Infof("Syncing provider %s from URL: %s", req.Filename, subURL)
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Get(subURL)
+	if err != nil {
+		errStr := "download failed: " + err.Error()
+		providerErrorsMu.Lock()
+		providerErrors[req.Filename] = errStr
+		providerErrorsMu.Unlock()
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": errStr})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		errStr := fmt.Sprintf("download failed: HTTP status %d", resp.StatusCode)
+		providerErrorsMu.Lock()
+		providerErrors[req.Filename] = errStr
+		providerErrorsMu.Unlock()
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": errStr})
+		return
+	}
+
+	bodyData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		errStr := "failed to read download response: " + err.Error()
+		providerErrorsMu.Lock()
+		providerErrors[req.Filename] = errStr
+		providerErrorsMu.Unlock()
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": errStr})
+		return
+	}
+
+	var temp interface{}
+	if err := yaml.Unmarshal(bodyData, &temp); err != nil {
+		errStr := "validation failed: downloaded content is not valid YAML: " + err.Error()
+		providerErrorsMu.Lock()
+		providerErrors[req.Filename] = errStr
+		providerErrorsMu.Unlock()
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": errStr})
+		return
+	}
+
+	payloadPathVal, ok := parsed["path"]
+	var targetPath string
+	if ok && payloadPathVal != nil {
+		rawPath := fmt.Sprintf("%v", payloadPathVal)
+		if filepath.IsAbs(rawPath) {
+			targetPath = rawPath
+		} else {
+			targetPath = filepath.Join(h.appConfig.Mihomo.WorkingDir, rawPath)
+		}
+	} else {
+		targetPath = filepath.Join(h.appConfig.Mihomo.WorkingDir, "providers", req.Filename)
+	}
+
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		errStr := "failed to create payload directory: " + err.Error()
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": errStr})
+		return
+	}
+
+	if err := os.WriteFile(targetPath, bodyData, 0644); err != nil {
+		errStr := "failed to save payload: " + err.Error()
+		providerErrorsMu.Lock()
+		providerErrors[req.Filename] = errStr
+		providerErrorsMu.Unlock()
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": errStr})
+		return
+	}
+
+	providerErrorsMu.Lock()
+	delete(providerErrors, req.Filename)
+	providerErrorsMu.Unlock()
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "Provider synced and validated successfully"})
 }

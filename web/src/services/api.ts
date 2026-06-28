@@ -146,6 +146,19 @@ export const mihomoApi = {
     };
   },
   // ── Generic file CRUD helpers ──
+  async _listFilesWithErrors(dir: string): Promise<{ data: string[]; errors: Record<string, string> }> {
+    try {
+      const r = await fetchApi<string[]>(`/api/v1/mihomo/${dir}`);
+      return {
+        data: r.data || [],
+        errors: (r as { errors?: Record<string, string> }).errors || {},
+      };
+    } catch (err) {
+      console.error(err);
+      return { data: [], errors: {} };
+    }
+  },
+
   async _listFiles(dir: string): Promise<string[]> {
     try {
       const r = await fetchApi<string[]>(`/api/v1/mihomo/${dir}`);
@@ -235,8 +248,8 @@ export const mihomoApi = {
   },
 
   // ── Proxy Providers ──
-  async getProxyProviders(): Promise<string[]> {
-    return this._listFiles("proxy-providers");
+  async getProxyProviders(): Promise<{ data: string[]; errors: Record<string, string> }> {
+    return this._listFilesWithErrors("proxy-providers");
   },
   async getProxyProviderContent(filename: string): Promise<string> {
     const r = await fetchApi<{ content: string }>(`/api/v1/mihomo/proxy-providers/${filename}`);
@@ -259,8 +272,8 @@ export const mihomoApi = {
   },
 
   // ── Rule Providers ──
-  async getRuleProviders(): Promise<string[]> {
-    return this._listFiles("rule-providers");
+  async getRuleProviders(): Promise<{ data: string[]; errors: Record<string, string> }> {
+    return this._listFilesWithErrors("rule-providers");
   },
   async getRuleProviderContent(filename: string): Promise<string> {
     const r = await fetchApi<{ content: string }>(`/api/v1/mihomo/rule-providers/${filename}`);
@@ -280,6 +293,12 @@ export const mihomoApi = {
   },
   async deleteRuleProvider(filename: string): Promise<void> {
     return this._deleteFile("rule-providers", filename);
+  },
+  async syncProvider(dir: string, filename: string): Promise<void> {
+    await fetchApi("/api/v1/mihomo/providers/sync", {
+      method: "POST",
+      body: JSON.stringify({ dir, filename }),
+    });
   },
 };
 
@@ -302,6 +321,12 @@ export const configApi = {
     const res = await fetch(`${API}/api/v1/app/diagnostics`, { headers });
     if (!res.ok) throw new ApiError(res.status, `HTTP ${res.status}`);
     return res.json();
+  },
+  async recoverDiagnostics(target: string): Promise<void> {
+    await fetchApi("/api/v1/app/diagnostics/recover", {
+      method: "POST",
+      body: JSON.stringify({ target }),
+    });
   },
   async validateRouting(routing: { TCP: string; UDP: string; tun_device?: string }): Promise<{ valid: boolean; issues: string[] }> {
     const r = await fetchApi<{ valid: boolean; issues: string[] }>("/api/v1/mihomo/routing/validate", {

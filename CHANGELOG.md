@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-06-28
+
+### Added
+- **Monaco Editor Inline YAML Linting**: Integrated backend error offset parsing with Monaco Editor's model markers to display real-time, on-the-fly syntax validation errors (squigglies) and jump navigation warnings in the config editor workspace.
+- **Diagnostics Self-Healing Recovery Actions**: Implemented backend-driven recovery targets accessible through direct WebUI action buttons to execute specific self-healing commands (restarting `mihomo`/`go` controller daemon, resetting DNS server, flushing/reloading `iptables`/`nftables` packet filters).
+- **Transactional Routing Orchestration**: Integrated transactional routing status control gates, a pre-flight `/routing/validate` API validation endpoint, post-failure rollbacks, and sequential startup/shutdown Rule cleaning routines.
+- **Retro Bandwidth Velocity Charts**: Developed a high-performance bandwidth metrics tracker featuring a sliding window buffer, Pause rendering controls, timeline zoom scopes (1m, 2m, 5m), and light custom SVG speed graphs.
+- **Automated Profile Subscription Scheduler**: Added a background worker daemon in Go to periodically fetch and update profile subscriptions automatically on configurable interval ticks (daily, weekly, etc.).
+- **Provider Sync Inspector**: Implemented validation error feedback badges and manual sync actions in the provider's side drawer.
+
 ## [1.1.0] - 2026-06-28
 
 ### Added

@@ -134,12 +134,60 @@ export default function ConfigEditorPage() {
   const diffEditorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
   const newFileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const [monacoInstance, setMonacoInstance] = useState<Parameters<OnMount>[1] | null>(null);
+
   const activeFile = tabs.find((t) => t.name === activeTab);
   const activeValidation = activeFile ? validation[activeFile.name] : undefined;
   const dirtyTabs = useMemo(() => tabs.filter((t) => t.dirty), [tabs]);
   const dirtyCount = dirtyTabs.length;
   const configValidationCount = Object.values(validation).filter((item) => item.valid).length;
   const invalidCount = Object.values(validation).filter((item) => !item.valid).length;
+
+  useEffect(() => {
+    if (!activeFile || activeFile.type !== "config" || !activeFile.dirty) return;
+
+    const timeoutId = setTimeout(async () => {
+      setValidating(activeFile.name);
+      try {
+        const result = await mihomoApi.validateConfig(activeFile.name, activeFile.content);
+        setValidation((prev) => ({ ...prev, [activeFile.name]: result }));
+      } catch (err) {
+        console.error("Debounced validation error:", err);
+      } finally {
+        setValidating(null);
+      }
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [activeFile]);
+
+  useEffect(() => {
+    if (!editorRef.current || !activeFile || !monacoInstance) return;
+    const model = editorRef.current.getModel();
+    if (!model) return;
+
+    if (!activeValidation || activeValidation.valid) {
+      monacoInstance.editor.setModelMarkers(model, "owner-yaml", []);
+      return;
+    }
+
+    const markers = activeValidation.issues
+      .filter((issue) => issue.level === "error" && issue.line !== undefined && issue.line > 0)
+      .map((issue) => {
+        const line = issue.line || 1;
+        const col = issue.column || 1;
+        return {
+          startLineNumber: line,
+          startColumn: col,
+          endLineNumber: line,
+          endColumn: col + 4,
+          message: issue.message,
+          severity: 8, // monaco.MarkerSeverity.Error represents 8
+        };
+      });
+
+    monacoInstance.editor.setModelMarkers(model, "owner-yaml", markers);
+  }, [activeValidation, activeFile, monacoInstance]);
 
   const loadFiles = useCallback(async (mode: "init" | "refresh" = "init") => {
     if (mode === "init") setLoading(true);
@@ -152,8 +200,8 @@ export default function ConfigEditorPage() {
         mihomoApi.getActiveConfig(),
       ]);
       setConfigs(cfgList);
-      setProviders(provList);
-      setRules(ruleList);
+      setProviders(provList.data);
+      setRules(ruleList.data);
       setActiveConfig(active);
       setLastLoadedAt(new Date());
       setLoadError(null);
@@ -230,11 +278,6 @@ export default function ConfigEditorPage() {
             : t
         )
       );
-      setValidation((prev) => {
-        const next = { ...prev };
-        delete next[activeTab];
-        return next;
-      });
     },
     [activeTab]
   );
@@ -258,6 +301,22 @@ export default function ConfigEditorPage() {
       setValidating(null);
     }
   }, [activeFile]);
+
+  const handleJumpToError = (line: number | undefined, column: number | undefined) => {
+    if (!line) return;
+    const l = line;
+    const c = column || 1;
+    if (showDiff && diffEditorRef.current) {
+      const modified = diffEditorRef.current.getModifiedEditor();
+      modified.revealLineInCenter(l);
+      modified.setPosition({ lineNumber: l, column: c });
+      modified.focus();
+    } else if (editorRef.current) {
+      editorRef.current.revealLineInCenter(l);
+      editorRef.current.setPosition({ lineNumber: l, column: c });
+      editorRef.current.focus();
+    }
+  };
 
   const saveTab = useCallback(async (tab: FileTab) => {
     if (tab.type === "config") {
@@ -439,6 +498,7 @@ export default function ConfigEditorPage() {
 
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
+    setMonacoInstance(monaco);
 
     // Add Save command (Ctrl+S)
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
@@ -918,7 +978,15 @@ export default function ConfigEditorPage() {
                       />
                     ) : (
                       activeValidation.issues.map((issue) => (
-                        <div key={`${issue.source}-${issue.level}-${issue.line || 0}-${issue.column || 0}-${issue.message}`} className="rounded-[10px] border-2 border-black bg-black/10 p-3">
+                        <button
+                          type="button"
+                          key={`${issue.source}-${issue.level}-${issue.line || 0}-${issue.column || 0}-${issue.message}`}
+                          onClick={() => handleJumpToError(issue.line, issue.column)}
+                          disabled={!issue.line}
+                          className={`w-full text-left rounded-[10px] border-2 border-black bg-black/10 p-3 focus:outline-none transition-colors ${
+                            issue.line ? "cursor-pointer hover:bg-black/15 active:bg-black/20" : ""
+                          }`}
+                        >
                           <div className="flex items-start gap-2">
                             <CircleAlert className={`mt-0.5 h-4 w-4 ${issue.level === "error" ? "text-danger" : "text-warning"}`} />
                             <div className="min-w-0">
@@ -934,7 +1002,7 @@ export default function ConfigEditorPage() {
                               <p className="mt-2 break-words font-mono text-sm text-text">{issue.message}</p>
                             </div>
                           </div>
-                        </div>
+                        </button>
                       ))
                     )}
                   </div>

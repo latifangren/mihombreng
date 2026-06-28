@@ -57,8 +57,8 @@ describe("ConfigEditorPage", () => {
     
     // Default mock setup
     vi.mocked(mihomoApi.getConfigs).mockResolvedValue(["config1.yaml"]);
-    vi.mocked(mihomoApi.getProxyProviders).mockResolvedValue(["provider1.yaml"]);
-    vi.mocked(mihomoApi.getRuleProviders).mockResolvedValue(["rule1.yaml"]);
+    vi.mocked(mihomoApi.getProxyProviders).mockResolvedValue({ data: ["provider1.yaml"], errors: {} });
+    vi.mocked(mihomoApi.getRuleProviders).mockResolvedValue({ data: ["rule1.yaml"], errors: {} });
     vi.mocked(mihomoApi.getActiveConfig).mockResolvedValue("config1.yaml");
     vi.mocked(mihomoApi.getConfigContent).mockResolvedValue("port: 7890");
     vi.mocked(mihomoApi.validateConfig).mockResolvedValue({ valid: true, issues: [], summary: "OK", checked_with: [] });

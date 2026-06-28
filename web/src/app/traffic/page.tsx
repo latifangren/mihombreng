@@ -8,8 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { mihomoApi } from "@/services/api";
 import type { TrafficMetrics, TrafficMetricBucket } from "@/types";
 import { formatBytes } from "@/utils/format";
-import { Activity, ArrowDownToLine, ArrowUpFromLine, BarChart3, CircleAlert, Globe, Network, RefreshCcw, Wifi } from "lucide-react";
+import { Activity, ArrowDownToLine, ArrowUpFromLine, BarChart3, CircleAlert, Globe, Network, Play, Pause, RefreshCcw, Wifi } from "lucide-react";
 import toast from "react-hot-toast";
+import { RetroBandwidthChart } from "@/components/status/retro-bandwidth-chart";
 
 const BUCKET_ICONS: Record<string, typeof Globe> = {
   by_rule: BarChart3,
@@ -120,6 +121,10 @@ export default function TrafficPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
 
+  const [history, setHistory] = useState<Array<{ time: string; down: number; up: number }>>([]);
+  const [zoomLimit, setZoomLimit] = useState(60);
+  const [paused, setPaused] = useState(false);
+
   const loadMetrics = useCallback(async (mode: "init" | "refresh" = "init") => {
     if (mode === "init") setLoading(true);
     if (mode === "refresh") setRefreshing(true);
@@ -141,7 +146,32 @@ export default function TrafficPage() {
 
   useEffect(() => {
     void loadMetrics();
+    const id = setInterval(() => {
+      void loadMetrics();
+    }, 5000);
+    return () => clearInterval(id);
   }, [loadMetrics]);
+
+  useEffect(() => {
+    if (paused) return;
+
+    const poll = async () => {
+      try {
+        const stats = await mihomoApi.getTraffic();
+        const nowStr = new Date().toLocaleTimeString();
+        setHistory((prev) => {
+          const next = [...prev, { time: nowStr, down: stats.down, up: stats.up }];
+          return next.slice(-300); // Max 300 data points (5 minutes)
+        });
+      } catch (err) {
+        console.error("Traffic poll error:", err);
+      }
+    };
+
+    void poll();
+    const id = setInterval(poll, 1000);
+    return () => clearInterval(id);
+  }, [paused]);
 
   const data = metrics;
   const grandTotal = data ? data.downloadTotal + data.uploadTotal : 0;
@@ -196,6 +226,50 @@ export default function TrafficPage() {
         />
       ) : (
         <>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[12px] border-2 border-black bg-surface p-3 shadow-[4px_4px_0_#000]">
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] uppercase text-text-muted">Window:</span>
+              {[
+                { label: "1m", value: 60 },
+                { label: "2m", value: 120 },
+                { label: "5m", value: 300 },
+              ].map((opt) => (
+                <button
+                  type="button"
+                  key={opt.value}
+                  onClick={() => setZoomLimit(opt.value)}
+                  className={`rounded border-2 border-black px-2 py-0.5 font-mono text-[10px] shadow-[2px_2px_0_#000] focus:outline-none active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#000] ${
+                    zoomLimit === opt.value
+                      ? "bg-primary text-background font-bold"
+                      : "bg-background hover:bg-black/5"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setPaused((prev) => !prev)}
+              className="flex items-center gap-1.5 rounded border-2 border-black bg-background px-3 py-1 font-heading text-[10px] uppercase shadow-[2px_2px_0_#000] focus:outline-none active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0_#000] hover:bg-black/5"
+            >
+              {paused ? (
+                <>
+                  <Play className="h-3 w-3 text-primary fill-primary" />
+                  Resume
+                </>
+              ) : (
+                <>
+                  <Pause className="h-3 w-3 text-danger fill-danger" />
+                  Pause
+                </>
+              )}
+            </button>
+          </div>
+
+          <RetroBandwidthChart data={history.slice(-zoomLimit)} maxPoints={zoomLimit} />
+
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             <Card className="p-4">
               <p className="font-heading text-xs uppercase tracking-wide text-text-muted">Connections</p>

@@ -8,12 +8,14 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
 	"mihombreng/internal/domain"
 	"mihombreng/pkg/apperror"
 	"mihombreng/pkg/config"
+	"mihombreng/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 )
@@ -289,6 +291,73 @@ func (h *AppHandler) Diagnostics(c *gin.Context) {
 		"generated_at": generatedAt,
 		"checks":       checks,
 	})
+}
+
+// RecoverDiagnostics godoc
+// @Summary Recover targeted diagnostics checks
+// @Description Trigger actions to recover system issues reported in diagnostics (dns, firewall, mihomo)
+// @Tags Mihombreng App
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "Recovery target key"
+// @Success 200 {object} map[string]interface{}
+// @Router /app/diagnostics/recover [post]
+func (h *AppHandler) RecoverDiagnostics(c *gin.Context) {
+	var req struct {
+		Target string `json:"target" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+
+	logger.Infof("Triggering diagnostics recovery for target: %s", req.Target)
+
+	switch req.Target {
+	case "mihomo":
+		if h.mihomoService.GetStatus() == "running" {
+			if err := h.mihomoService.Restart(); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+				return
+			}
+		} else {
+			if err := h.mihomoService.Start(); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "Mihomo core process starting/restarting initiated"})
+
+	case "firewall":
+		err := h.mihomoService.RestartWithPreviousRouting(h.config.Mihomo.Routing)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "Firewall status reloaded and routing setup completed"})
+
+	case "dns":
+		var err error
+		if _, statErr := os.Stat("/etc/init.d/dnsmasq"); statErr == nil {
+			cmd := exec.Command("/etc/init.d/dnsmasq", "restart")
+			err = cmd.Run()
+		} else if _, statErr := os.Stat("/usr/sbin/dnsmasq"); statErr == nil {
+			cmd := exec.Command("service", "dnsmasq", "restart")
+			err = cmd.Run()
+		} else {
+			logger.Warn("DNS recovery: dnsmasq not found, skipped restart command execution")
+		}
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to restart DNS resolver: " + err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "DNS resolver restart command executed successfully"})
+
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "unknown recovery target: " + req.Target})
+	}
 }
 
 func (h *AppHandler) checkFilesystemPath(id, label, path string, expectFile bool) DiagnosticsCheck {

@@ -69,6 +69,7 @@ func main() {
 
 	mihomoService := service.NewMihomoService(cfg, configPath, nftablesService)
 	subscriptionService := subscription.NewService(cfg.Mihomo.WorkingDir)
+	subscriptionService.StartScheduler(context.Background())
 
 	if err := mihomoService.RestoreState(); err != nil {
 		log.Printf("Failed to restore mihomo state: %v", err)

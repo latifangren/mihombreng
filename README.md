@@ -1,19 +1,23 @@
 # Mihombreng
 
-Controller and manager for Mihomo (Clash Meta) on OpenWrt and Linux servers.
+A lightweight, high-performance controller and dashboard for the **Mihomo (Clash Meta)** proxy core on OpenWrt and Linux servers. It features a Go backend API with an embedded React WebUI served as a single compiled binary.
 
 ## Features
 
-- Core management — start/stop/restart Mihomo with API control
-- Routing modes — TUN, TProxy, Redirect, Mixed
-- Web dashboard — React SPA with retro-brutalist theme
-- Config editor — edit Mihomo config.yaml from browser
-- File manager — manage providers, rules, GeoIP/GeoSite databases
-- Backup & restore — snapshot and restore Mihomo state
-- DNS lookup — query any DNS server from the UI
-- Subscription converter — parse proxy subscription URLs
-- Log streaming — real-time WebSocket log viewer
-- OpenWrt integration — procd service, nftables, LuCI app
+- **Core Lifecycle Management**: Start, stop, and restart the Mihomo core process programmatically with real-time status.
+- **Routing Modes**: Seamless orchestration for transparent proxying (TUN, TProxy, Redirect, and Mixed packet interception).
+- **Diagnostics & Self-Healing**: Check host paths, filesystem permissions, DNS resolution, and TCP reachability. Triggers automated recovery routines (DNS resolver configuration reset, firewall flush, daemon restart) directly from the WebUI.
+- **Real-Time Observability**:
+  - Live activity logging stream with terminal pauses, filter queries, and TXT/CSV/JSON export formats.
+  - Interactive retro-brutalist bandwidth graphs (download/upload speed) using lightweight custom SVG lines with timeline zoom scales (1m, 2m, 5m) and rendering pause controls.
+  - Live connections inspector with detailed routing paths, DNS resolutions, and individual flow termination controls.
+- **Config Editor**: Edit Mihomo rule setups from your browser using Monaco Editor, featuring debounced YAML inline linting (squigglies), syntax validation gates, and side-by-side Monaco DiffEditor comparison previews before saving.
+- **Provider & Subscription Management**:
+  - Auto-scheduler: Background task runner that periodically updates and pulls profile subscriptions (daily, weekly, etc.) automatically.
+  - File inspector: Detailed sync tracking with error indicator badges, sync error panels, and manual validation sync updates.
+- **Backup & Restore**: Snapshot local configurations and restore history states from local disk or remote WebDAV cloud sync stores.
+- **Hardened Security**: Mandatory token-based API authentication (Bearer tokens and WebSocket subprotocols) and per-IP request rate limiting.
+- **Package Integration**: Native packaging scripts for Linux `systemd` and OpenWrt SDK (`procd` and LuCI package outputs).
 
 ## Quick Start
 
@@ -69,12 +73,12 @@ mihombreng/
 │   ├── cmd/server/           Entry point
 │   ├── internal/
 │   │   ├── http/
-│   │   │   ├── handler/     Route handlers
-│   │   │   ├── middleware/   CORS, auth
-│   │   │   └── router/      Route definitions
-│   │   ├── service/          Mihomo lifecycle, nftables
+│   │   │   ├── handler/      Route handlers
+│   │   │   ├── middleware/   CORS, auth, rate limit
+│   │   │   └── router/       Route definitions
+│   │   ├── service/          Mihomo lifecycle, nftables, backup
 │   │   ├── domain/           Service interfaces
-│   │   ├── converter/        Proxy URL parser
+│   │   ├── converter/        Proxy subscription parser
 │   │   └── ui/               Embedded frontend
 │   └── pkg/
 │       ├── config/           YAML config

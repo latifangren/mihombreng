@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	proxylib "mihombreng/internal/converter"
+	"mihombreng/pkg/logger"
 )
 
 type Subscription struct {
@@ -370,4 +372,57 @@ func normalizeInterval(value int) int {
 		return 3600
 	}
 	return value
+}
+
+func (s *Service) StartScheduler(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Minute)
+	go func() {
+		s.checkAndRefreshSubscriptions()
+
+		for {
+			select {
+			case <-ticker.C:
+				s.checkAndRefreshSubscriptions()
+			case <-ctx.Done():
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+func (s *Service) checkAndRefreshSubscriptions() {
+	s.mu.Lock()
+	items, err := s.load()
+	s.mu.Unlock()
+
+	if err != nil {
+		return
+	}
+
+	for _, item := range items {
+		if !item.Enabled || item.UpdateInterval <= 0 {
+			continue
+		}
+
+		due := false
+		if item.LastSuccessAt == "" {
+			due = true
+		} else {
+			lastSuccess, err := time.Parse(time.RFC3339, item.LastSuccessAt)
+			if err != nil {
+				due = true
+			} else {
+				// Treat UpdateInterval as seconds (matching UI config)
+				if time.Since(lastSuccess) >= time.Duration(item.UpdateInterval)*time.Second {
+					due = true
+				}
+			}
+		}
+
+		if due {
+			logger.Infof("Background scheduler: updating profile subscription %s (%s)", item.Name, item.ID)
+			_, _ = s.Refresh(item.ID)
+		}
+	}
 }

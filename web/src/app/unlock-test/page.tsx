@@ -47,8 +47,9 @@ export default function UnlockTestPage() {
           initial[t.id] = { loading: false };
         });
         setResults(initial);
-      } catch (err: any) {
-        toast.error("Failed to load unlock targets: " + err.message);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        toast.error("Failed to load unlock targets: " + msg);
       } finally {
         setLoading(false);
       }
@@ -84,8 +85,9 @@ export default function UnlockTestPage() {
       } else {
         toast.error("Failed to parse test results");
       }
-    } catch (err: any) {
-      toast.error("Error executing targets: " + err.message);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error("Error executing targets: " + msg);
       setResults(prev => {
         const next = { ...prev };
         targets.forEach(t => {
@@ -120,13 +122,14 @@ export default function UnlockTestPage() {
           }
         }));
       }
-    } catch (err: any) {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       setResults(prev => ({
         ...prev,
         [targetId]: {
           status: "Failed",
           checked_at: new Date().toISOString(),
-          message: err.message,
+          message: msg,
           loading: false,
         }
       }));

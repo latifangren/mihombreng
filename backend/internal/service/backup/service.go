@@ -45,7 +45,29 @@ func NewService(cfg *config.Config, configPath string) *Service {
 		configPath: configPath,
 		targets:    make(map[string]Target),
 	}
+	s.initializeTargets()
 	return s
+}
+
+func (s *Service) initializeTargets() {
+	if s.config == nil {
+		return
+	}
+	for _, tc := range s.config.Backup.Targets {
+		target, err := NewTarget(TargetConfig{
+			Name:     tc.Name,
+			Type:     tc.Type,
+			URL:      tc.URL,
+			Username: tc.Username,
+			Password: tc.Password,
+			Enabled:  tc.Enabled,
+		})
+		if err != nil {
+			logger.Errorf("Failed to initialize remote backup target %s: %v", tc.Name, err)
+			continue
+		}
+		s.targets[tc.Name] = target
+	}
 }
 
 func (s *Service) CreateBackup(source string) (*BackupEntry, int, error) {
@@ -517,9 +539,21 @@ func (s *Service) resolveRestoreTargetPath(archiveName, runtimeRoot, workingDir 
 // Remote target methods
 
 func (s *Service) GetRemoteTargets() []TargetConfig {
-	// For now, return configured targets from config
-	// In future, this could come from a database
-	return nil
+	if s.config == nil {
+		return nil
+	}
+	var result []TargetConfig
+	for _, tc := range s.config.Backup.Targets {
+		result = append(result, TargetConfig{
+			Name:     tc.Name,
+			Type:     tc.Type,
+			URL:      tc.URL,
+			Username: tc.Username,
+			Password: tc.Password,
+			Enabled:  tc.Enabled,
+		})
+	}
+	return result
 }
 
 func (s *Service) TestRemoteTarget(name string) (string, error) {

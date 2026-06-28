@@ -70,10 +70,11 @@ type CORSConfig struct {
 }
 
 type BackupConfig struct {
-	AutoBackupEnabled bool   `yaml:"auto_backup_enabled"`
-	MaxBackups        int    `yaml:"max_backups"`
-	MaxAgeDays        int    `yaml:"max_age_days"`
-	BackupDir         string `yaml:"backup_dir"`
+	AutoBackupEnabled bool                 `yaml:"auto_backup_enabled"`
+	MaxBackups        int                  `yaml:"max_backups"`
+	MaxAgeDays        int                  `yaml:"max_age_days"`
+	BackupDir         string               `yaml:"backup_dir"`
+	Targets           []RemoteBackupTarget `yaml:"targets"`
 }
 
 type RemoteBackupTarget struct {

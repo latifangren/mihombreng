@@ -46,3 +46,16 @@ api:
     - Content-Length
     allow_credentials: true
     max_age: 3600
+
+backup:
+  auto_backup_enabled: true
+  max_backups: 10
+  max_age_days: 30
+  backup_dir: "/etc/mihombreng/backups"
+  targets:
+    - name: "Nextcloud WebDAV"
+      type: "webdav"
+      url: "https://nextcloud.example.com/remote.php/dav/files/username/backups"
+      username: "user"
+      password: "password"
+      enabled: false

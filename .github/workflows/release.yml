@@ -2,7 +2,7 @@ name: Auto Release on Version Bump
 on:
   push:
     branches:
-      - dev      # Triggers on push/merge to dev branch
+      - main      # Triggers on push/merge to main branch
     paths:
       - 'defaults/mihombreng.yaml'
 

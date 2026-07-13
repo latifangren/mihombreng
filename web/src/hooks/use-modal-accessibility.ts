@@ -3,6 +3,12 @@ import { useEffect, useRef } from "react";
 export function useModalAccessibility(isOpen: boolean, onClose: () => void) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
+  // Keep onCloseRef dynamic without re-running accessibility effects
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,7 +42,7 @@ export function useModalAccessibility(isOpen: boolean, onClose: () => void) {
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -80,7 +86,7 @@ export function useModalAccessibility(isOpen: boolean, onClose: () => void) {
         previousFocusRef.current.focus();
       }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   return containerRef;
 }

@@ -25,7 +25,7 @@ BIN_ARM64:=mihombreng-linux-arm64
 BIN_ARMHF:=mihombreng-linux-armv7
 
 # Mihomo
-MIHOMO_VERSION:=v1.19.27
+MIHOMO_VERSION:=v1.19.28
 MIHOMO_URL_BASE:=https://github.com/MetaCubeX/mihomo/releases/download/$(MIHOMO_VERSION)
 MIHOMO_ARCH_AMD64:=mihomo-linux-amd64-v1
 MIHOMO_ARCH_ARM64:=mihomo-linux-arm64

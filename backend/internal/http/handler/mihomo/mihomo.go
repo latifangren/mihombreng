@@ -375,17 +375,25 @@ func (h *MihomoHandler) proxyWebsocket(c *gin.Context, targetURL *url.URL) {
 	defer clientConn.Close()
 
 	errc := make(chan error, 2)
+	done := make(chan struct{})
 
 	// Copy client -> upstream
 	go func() {
+		defer close(done)
 		for {
 			messageType, p, err := clientConn.ReadMessage()
 			if err != nil {
-				errc <- err
+				select {
+				case errc <- err:
+				default:
+				}
 				return
 			}
 			if err := upstreamConn.WriteMessage(messageType, p); err != nil {
-				errc <- err
+				select {
+				case errc <- err:
+				default:
+				}
 				return
 			}
 		}
@@ -396,12 +404,23 @@ func (h *MihomoHandler) proxyWebsocket(c *gin.Context, targetURL *url.URL) {
 		for {
 			messageType, p, err := upstreamConn.ReadMessage()
 			if err != nil {
-				errc <- err
+				select {
+				case errc <- err:
+				default:
+				}
 				return
 			}
 			if err := clientConn.WriteMessage(messageType, p); err != nil {
-				errc <- err
+				select {
+				case errc <- err:
+				default:
+				}
 				return
+			}
+			select {
+			case <-done:
+				return
+			default:
 			}
 		}
 	}()

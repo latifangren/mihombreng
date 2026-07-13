@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-07-14
+
+### Added
+- **CI Auto-Release Workflow**: Implemented automated release process via GitHub Actions triggered by pushing tags or manual workflow dispatches.
+- **Dynamic Package Versioning**: Overhauled Makefiles to extract package versions and releases dynamically from defaults configuration file.
+
+### Fixed
+- **Modal Input Focus Loss**: Resolved focus loss on keypress in modal inputs across the application (e.g. create/rename modals) by refactoring hook dependencies.
+- **WebSocket Streaming Goroutine Leaks**: Prevented websocket resource leaks by handling client disconnection signals to cleanly shutdown ticker loops and HTTP reader streams in logs, connections, and system log file tailing.
+- **MihomoService Concurrency & Data Race**: Locked access with RWMutex to start/stop processes and verify outbound routing status, resolving background data races and concurrent goroutines accumulation.
+- **Goroutine-free IP Rate Limiter**: Overhauled rate limiting middleware to clean stale visitor allocations dynamically inline, removing background goroutines leaks entirely.
+
+### Changed
+- **Singular Endpoint Paths Uniformity**: Standardized API paths and React components from plural (`proxy-providers` / `rule-providers`) to singular (`proxy-provider` / `rule-provider`) for uniform REST design.
+
 ## [1.2.0] - 2026-06-28
 
 ### Added

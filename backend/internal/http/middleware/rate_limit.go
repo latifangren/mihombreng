@@ -16,22 +16,21 @@ type visitor struct {
 }
 
 type rateLimiter struct {
-	visitors map[string]*visitor
-	mu       sync.Mutex
-	rate     rate.Limit
-	burst    int
+	visitors    map[string]*visitor
+	mu          sync.Mutex
+	rate        rate.Limit
+	burst       int
+	lastCleanup time.Time
 }
 
-// newRateLimiter creates a new rate limiter that cleans up stale entries
+// newRateLimiter creates a new rate limiter
 func newRateLimiter(r rate.Limit, b int) *rateLimiter {
-	rl := &rateLimiter{
-		visitors: make(map[string]*visitor),
-		rate:     r,
-		burst:    b,
+	return &rateLimiter{
+		visitors:    make(map[string]*visitor),
+		rate:        r,
+		burst:       b,
+		lastCleanup: time.Now(),
 	}
-
-	go rl.cleanupVisitors()
-	return rl
 }
 
 // getVisitor returns the rate limiter for the given IP address
@@ -39,32 +38,29 @@ func (rl *rateLimiter) getVisitor(ip string) *rate.Limiter {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
+	// Inline cleanup stale entries at most once per minute
+	now := time.Now()
+	if now.Sub(rl.lastCleanup) > time.Minute {
+		for staleIP, v := range rl.visitors {
+			if now.Sub(v.lastSeen) > 3*time.Minute {
+				delete(rl.visitors, staleIP)
+			}
+		}
+		rl.lastCleanup = now
+	}
+
 	v, exists := rl.visitors[ip]
 	if !exists {
 		limiter := rate.NewLimiter(rl.rate, rl.burst)
 		rl.visitors[ip] = &visitor{
 			limiter:  limiter,
-			lastSeen: time.Now(),
+			lastSeen: now,
 		}
 		return limiter
 	}
 
-	v.lastSeen = time.Now()
+	v.lastSeen = now
 	return v.limiter
-}
-
-// cleanupVisitors removes stale visitor entries
-func (rl *rateLimiter) cleanupVisitors() {
-	for {
-		time.Sleep(time.Minute)
-		rl.mu.Lock()
-		for ip, v := range rl.visitors {
-			if time.Since(v.lastSeen) > 3*time.Minute {
-				delete(rl.visitors, ip)
-			}
-		}
-		rl.mu.Unlock()
-	}
 }
 
 // RateLimit creates a Gin middleware for rate limiting

@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -25,6 +26,7 @@ type MihomoService struct {
 	nftablesService domain.NftablesService
 	startTime       time.Time
 
+	mu               sync.RWMutex
 	routingHealthy   bool
 	routingError     string
 	routingLatency   int64
@@ -68,6 +70,8 @@ func (s *MihomoService) GetStatus() string {
 }
 
 func (s *MihomoService) GetUptime() int64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	if s.GetStatus() != "running" || s.startTime.IsZero() {
 		return 0
 	}
@@ -159,7 +163,9 @@ func (s *MihomoService) Start() error {
 		return fmt.Errorf("failed to start mihomo: %w", err)
 	}
 
+	s.mu.Lock()
 	s.startTime = time.Now()
+	s.mu.Unlock()
 
 	pidFile := filepath.Join(s.appConfig.Mihomo.WorkingDir, "mihomo.pid")
 	if err = os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", cmd.Process.Pid)), 0644); err != nil {
@@ -256,7 +262,9 @@ func (s *MihomoService) stopWithRoutingCleanup(saveState bool, cleanupRouting co
 		return fmt.Errorf("failed to remove pid file: %w", err)
 	}
 
+	s.mu.Lock()
 	s.startTime = time.Time{}
+	s.mu.Unlock()
 
 	if shouldSetupRoutingFor(cleanupRouting) {
 		logger.Debug("Cleaning up routing")
@@ -575,15 +583,22 @@ func (s *MihomoService) ValidateRouting(routingConfig config.RoutingConfig) (boo
 }
 
 func (s *MihomoService) GetRoutingHealth() (bool, string, int64) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.routingHealthy, s.routingError, s.routingLatency
 }
 
 func (s *MihomoService) startRoutingHealthCheck() {
+	s.mu.Lock()
 	if s.routingCheckStop != nil {
+		s.mu.Unlock()
 		return
 	}
 
 	s.routingCheckStop = make(chan struct{})
+	stopChan := s.routingCheckStop
+	s.mu.Unlock()
+
 	go func() {
 		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()
@@ -594,7 +609,7 @@ func (s *MihomoService) startRoutingHealthCheck() {
 			select {
 			case <-ticker.C:
 				s.checkRoutingHealth()
-			case <-s.routingCheckStop:
+			case <-stopChan:
 				return
 			}
 		}
@@ -602,6 +617,8 @@ func (s *MihomoService) startRoutingHealthCheck() {
 }
 
 func (s *MihomoService) stopRoutingHealthCheck() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.routingCheckStop != nil {
 		close(s.routingCheckStop)
 		s.routingCheckStop = nil
@@ -610,9 +627,11 @@ func (s *MihomoService) stopRoutingHealthCheck() {
 
 func (s *MihomoService) checkRoutingHealth() {
 	if !s.shouldSetupRouting() {
+		s.mu.Lock()
 		s.routingHealthy = true
 		s.routingError = ""
 		s.routingLatency = 0
+		s.mu.Unlock()
 		return
 	}
 
@@ -623,6 +642,14 @@ func (s *MihomoService) checkRoutingHealth() {
 	start := time.Now()
 	resp, err := client.Get("http://cp.cloudflare.com/generate_204")
 	latency := time.Since(start).Milliseconds()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// If check stop was cleared while we were awaiting http client, discard the update
+	if s.routingCheckStop == nil {
+		return
+	}
 
 	if err != nil {
 		s.routingHealthy = false

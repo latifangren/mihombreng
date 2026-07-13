@@ -21,6 +21,24 @@ export function useLogs(endpoint: string, clearEndpoint = "/api/v1/mihomo/logs")
   const mountedRef = useRef(true);
   const manualCloseRef = useRef(false);
   const reconnectAttemptRef = useRef(0);
+  const bufferRef = useRef<MihomoLog[]>([]);
+
+  // Flush buffer to state every 150ms
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (bufferRef.current.length === 0) return;
+      const newLines = bufferRef.current;
+      bufferRef.current = [];
+      setLogs((prev) => {
+        const next = [...prev, ...newLines];
+        return next.length > MAX_LOGS ? next.slice(-MAX_LOGS) : next;
+      });
+    }, 150);
+
+    return () => {
+      clearInterval(timer);
+    };
+  }, []);
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return;
@@ -53,10 +71,10 @@ export function useLogs(endpoint: string, clearEndpoint = "/api/v1/mihomo/logs")
         }
 
         if (pausedRef.current) return;
-        setLogs((prev) => {
-          const next = [...prev, line];
-          return next.length > MAX_LOGS ? next.slice(-MAX_LOGS) : next;
-        });
+        bufferRef.current.push(line);
+        if (bufferRef.current.length > MAX_LOGS) {
+          bufferRef.current = bufferRef.current.slice(-MAX_LOGS);
+        }
       },
       () => {},
       () => {
@@ -86,6 +104,7 @@ export function useLogs(endpoint: string, clearEndpoint = "/api/v1/mihomo/logs")
   useEffect(() => {
     mountedRef.current = true;
     manualCloseRef.current = false;
+    bufferRef.current = [];
     setLogs([]);
     setConnected(false);
     setConnectionState("connecting");
@@ -118,6 +137,7 @@ export function useLogs(endpoint: string, clearEndpoint = "/api/v1/mihomo/logs")
     } catch (err) {
       console.error("Failed to clear logs on server:", err);
     }
+    bufferRef.current = [];
     setLogs([]);
   }, [clearEndpoint]);
 

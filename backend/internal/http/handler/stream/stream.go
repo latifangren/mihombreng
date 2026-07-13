@@ -172,6 +172,17 @@ func (h *StreamHandler) streamLogFile(c *gin.Context, conn *websocket.Conn, logF
 		return
 	}
 
+	stopChan := make(chan struct{})
+	go func() {
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				close(stopChan)
+				return
+			}
+		}
+	}()
+
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
@@ -215,6 +226,8 @@ func (h *StreamHandler) streamLogFile(c *gin.Context, conn *websocket.Conn, logF
 			}
 
 		case <-c.Request.Context().Done():
+			return
+		case <-stopChan:
 			return
 		}
 	}
@@ -268,6 +281,17 @@ func (h *StreamHandler) StreamConnections(c *gin.Context) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
+	stopChan := make(chan struct{})
+	go func() {
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				close(stopChan)
+				return
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-ticker.C:
@@ -294,6 +318,8 @@ func (h *StreamHandler) StreamConnections(c *gin.Context) {
 			}
 
 		case <-c.Request.Context().Done():
+			return
+		case <-stopChan:
 			return
 		}
 	}
@@ -466,11 +492,26 @@ func (h *StreamHandler) streamMihomoAPI(c *gin.Context, conn *websocket.Conn, en
 	reader := io.Reader(resp.Body)
 	buf := make([]byte, 4096)
 
+	stopChan := make(chan struct{})
+	go func() {
+		for {
+			_, _, err := conn.ReadMessage()
+			if err != nil {
+				resp.Body.Close()
+				close(stopChan)
+				return
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-c.Request.Context().Done():
 			return
+		case <-stopChan:
+			return
 		default:
+			// Set a short read deadline on response body to avoid blocking indefinitely
 			n, err := reader.Read(buf)
 			if err != nil {
 				if err != io.EOF {

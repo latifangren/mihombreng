@@ -3,8 +3,8 @@ include $(TOPDIR)/rules.mk
 # Touch workflow path to validate dev smoke-build trigger.
 PKG_NAME:=luci-app-mihombreng
 
-PKG_VERSION:=1.0.0
-PKG_RELEASE:=5
+PKG_VERSION:=$(shell grep -m 1 '^version:' ../../../defaults/mihombreng.yaml | awk '{print $$2}' | tr -d '"')
+PKG_RELEASE:=1
 
 PKG_MAINTAINER:=latifangren
 

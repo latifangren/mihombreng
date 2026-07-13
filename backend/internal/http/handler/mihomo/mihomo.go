@@ -353,7 +353,7 @@ func (h *MihomoHandler) proxyWebsocket(c *gin.Context, targetURL *url.URL) {
 	if h.appConfig.Mihomo.APISecret != "" {
 		reqHeader.Set("Authorization", "Bearer "+h.appConfig.Mihomo.APISecret)
 	}
-	
+
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 5 * time.Second,
 	}
@@ -375,7 +375,7 @@ func (h *MihomoHandler) proxyWebsocket(c *gin.Context, targetURL *url.URL) {
 	defer clientConn.Close()
 
 	errc := make(chan error, 2)
-	
+
 	// Copy client -> upstream
 	go func() {
 		for {
@@ -390,7 +390,7 @@ func (h *MihomoHandler) proxyWebsocket(c *gin.Context, targetURL *url.URL) {
 			}
 		}
 	}()
-	
+
 	// Copy upstream -> client
 	go func() {
 		for {
@@ -405,7 +405,7 @@ func (h *MihomoHandler) proxyWebsocket(c *gin.Context, targetURL *url.URL) {
 			}
 		}
 	}()
-	
+
 	<-errc
 }
 
@@ -943,7 +943,7 @@ func (h *MihomoHandler) GetCoreVersion(c *gin.Context) {
 	}
 
 	versionStr := strings.TrimSpace(strings.Split(string(output), "\n")[0])
-	// Extract just the version number (e.g. "v1.19.27") from "Mihomo Meta v1.19.27 ..."
+	// Extract just the version number (e.g. "v1.19.28") from "Mihomo Meta v1.19.28 ..."
 	parts := strings.Fields(versionStr)
 	shortVersion := versionStr
 	for _, p := range parts {

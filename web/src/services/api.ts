@@ -112,13 +112,13 @@ export const mihomoApi = {
     });
   },
   async saveProxyProvider(filename: string, content: string): Promise<void> {
-    await fetchApi(`/api/v1/mihomo/proxy-providers/${filename}`, {
+    await fetchApi(`/api/v1/mihomo/proxy-provider/${filename}`, {
       method: "PUT",
       body: JSON.stringify({ content }),
     });
   },
   async saveRuleProvider(filename: string, content: string): Promise<void> {
-    await fetchApi(`/api/v1/mihomo/rule-providers/${filename}`, {
+    await fetchApi(`/api/v1/mihomo/rule-provider/${filename}`, {
       method: "PUT",
       body: JSON.stringify({ content }),
     });
@@ -249,50 +249,50 @@ export const mihomoApi = {
 
   // ── Proxy Providers ──
   async getProxyProviders(): Promise<{ data: string[]; errors: Record<string, string> }> {
-    return this._listFilesWithErrors("proxy-providers");
+    return this._listFilesWithErrors("proxy-provider");
   },
   async getProxyProviderContent(filename: string): Promise<string> {
-    const r = await fetchApi<{ content: string }>(`/api/v1/mihomo/proxy-providers/${filename}`);
+    const r = await fetchApi<{ content: string }>(`/api/v1/mihomo/proxy-provider/${filename}`);
     return r.data?.content || "";
   },
   async createProxyProvider(filename: string): Promise<void> {
-    return this._createFile("proxy-providers", filename);
+    return this._createFile("proxy-provider", filename);
   },
   async uploadProxyProvider(file: File): Promise<void> {
-    return this._uploadFile("proxy-providers", file);
+    return this._uploadFile("proxy-provider", file);
   },
   async renameProxyProvider(filename: string, newName: string): Promise<void> {
-    return this._renameFile("proxy-providers", filename, newName);
+    return this._renameFile("proxy-provider", filename, newName);
   },
   async downloadProxyProvider(filename: string): Promise<void> {
-    return this._downloadFile("proxy-providers", filename);
+    return this._downloadFile("proxy-provider", filename);
   },
   async deleteProxyProvider(filename: string): Promise<void> {
-    return this._deleteFile("proxy-providers", filename);
+    return this._deleteFile("proxy-provider", filename);
   },
 
   // ── Rule Providers ──
   async getRuleProviders(): Promise<{ data: string[]; errors: Record<string, string> }> {
-    return this._listFilesWithErrors("rule-providers");
+    return this._listFilesWithErrors("rule-provider");
   },
   async getRuleProviderContent(filename: string): Promise<string> {
-    const r = await fetchApi<{ content: string }>(`/api/v1/mihomo/rule-providers/${filename}`);
+    const r = await fetchApi<{ content: string }>(`/api/v1/mihomo/rule-provider/${filename}`);
     return r.data?.content || "";
   },
   async createRuleProvider(filename: string): Promise<void> {
-    return this._createFile("rule-providers", filename);
+    return this._createFile("rule-provider", filename);
   },
   async uploadRuleProvider(file: File): Promise<void> {
-    return this._uploadFile("rule-providers", file);
+    return this._uploadFile("rule-provider", file);
   },
   async renameRuleProvider(filename: string, newName: string): Promise<void> {
-    return this._renameFile("rule-providers", filename, newName);
+    return this._renameFile("rule-provider", filename, newName);
   },
   async downloadRuleProvider(filename: string): Promise<void> {
-    return this._downloadFile("rule-providers", filename);
+    return this._downloadFile("rule-provider", filename);
   },
   async deleteRuleProvider(filename: string): Promise<void> {
-    return this._deleteFile("rule-providers", filename);
+    return this._deleteFile("rule-provider", filename);
   },
   async syncProvider(dir: string, filename: string): Promise<void> {
     await fetchApi("/api/v1/mihomo/providers/sync", {

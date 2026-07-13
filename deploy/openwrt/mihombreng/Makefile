@@ -9,7 +9,7 @@ PKG_LICENSE:=MIT
 
 PKG_BUILD_DEPENDS:=node/host golang/host
 
-MIHOMO_VERSION:=v1.19.27
+MIHOMO_VERSION:=v1.19.28
 
 include $(INCLUDE_DIR)/package.mk
 include $(TOPDIR)/feeds/packages/lang/golang/golang-package.mk

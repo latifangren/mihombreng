@@ -27,7 +27,7 @@ Docker/systemd deployment
         └── configs/config.yaml -> Mihomo core reads at startup
               ├── ports: 7890/7891/7892/7893/7894
               ├── dns: 0.0.0.0:1053 (redir-host)
-              └── proxy-providers -> proxy_providers/proxy.yaml
+              └── proxy-provider -> proxy_providers/proxy.yaml
 ```
 
 ## Integration

@@ -108,7 +108,7 @@ sniffer:
 profile:
   store-selected: true
   store-fake-ip: true
-proxy-providers: #change this to your own proxy provider file path if you want to use a custom proxy provider
+proxy-provider: #change this to your own proxy provider file path if you want to use a custom proxy provider
   ID:
     type: file
     path: ./proxy_providers/id.yaml #change this to your own proxy provider file path
@@ -123,7 +123,7 @@ proxy-providers: #change this to your own proxy provider file path if you want t
       enable: true
       url: http://www.gstatic.com/generate_204
       interval: 300     
-rule-providers: #change this to your own rule provider file path if you want to use a custom rule provider
+rule-provider: #change this to your own rule provider file path if you want to use a custom rule provider
   AdBlock:
     type: http
     behavior: classical

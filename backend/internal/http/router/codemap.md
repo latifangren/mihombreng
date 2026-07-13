@@ -47,7 +47,7 @@ Central HTTP route registration and wiring for the entire API layer. Instantiate
     ├── GET  /active-config
     ├── POST /validate-config
     ├── Any  /api/*path (Mihomo API proxy)
-    └── /configs/**, /proxy-providers/**, /rule-providers/**
+    └── /configs/**, /proxy-provider/**, /rule-provider/**
 ```
 
 ## Integration

@@ -8,7 +8,7 @@ set -euo pipefail
 
 ARCH=""
 BUILD_DIR=""
-MIHOMO_VERSION="v1.19.27"
+MIHOMO_VERSION="v1.19.28"
 MIHOMO_ARCH=""
 
 while [[ $# -gt 0 ]]; do

@@ -8,17 +8,17 @@ Single YAML file (`rule.yaml`) conforming to Mihomo's rule-provider file schema.
 
 ## Flow
 ```
-config.yaml (future rule-providers reference)
+config.yaml (future rule-provider reference)
   └─> rule.yaml (loaded by mihomo core when referenced)
         └── payload: [] (empty by default)
               └── Populated via:
-                    ├── Web UI -> POST /api/v1/mihomo/rule-providers (create)
-                    ├── Web UI -> POST /api/v1/mihomo/rule-providers/upload (multipart)
+                    ├── Web UI -> POST /api/v1/mihomo/rule-provider (create)
+                    ├── Web UI -> POST /api/v1/mihomo/rule-provider/upload (multipart)
                     └── Direct file edit via config editor
 ```
 
 ## Integration
-- **API**: CRUD operations at `/api/v1/mihomo/rule-providers/*` (list, read, create, update, delete, upload, download, rename)
-- **Config reference**: Mihomo `config.yaml` can reference rules from this directory via `rule-providers` block with `path: ./rule_providers/rule.yaml`
+- **API**: CRUD operations at `/api/v1/mihomo/rule-provider/*` (list, read, create, update, delete, upload, download, rename)
+- **Config reference**: Mihomo `config.yaml` can reference rules from this directory via `rule-provider` block with `path: ./rule_providers/rule.yaml`
 - **Frontend**: File manager component (`web/src/components/manager/`) and rule provider UI manage this file
 - **Note**: Not currently referenced in the default `config.yaml` (Phase 2 roadmap item)

@@ -21,7 +21,7 @@ import {
 import toast from "react-hot-toast";
 
 // ── Types ──
-type FileDir = "configs" | "proxy-providers" | "rule-providers";
+type FileDir = "configs" | "proxy-provider" | "rule-provider";
 
 type FileSection = {
   dir: FileDir;
@@ -32,8 +32,8 @@ type FileSection = {
 
 const SECTIONS: FileSection[] = [
   { dir: "configs", label: "Config Files", badgeVariant: "info", badgeLabel: "config" },
-  { dir: "proxy-providers", label: "Proxy Providers", badgeVariant: "warning", badgeLabel: "provider" },
-  { dir: "rule-providers", label: "Rule Providers", badgeVariant: "success", badgeLabel: "rules" },
+  { dir: "proxy-provider", label: "Proxy Providers", badgeVariant: "warning", badgeLabel: "provider" },
+  { dir: "rule-provider", label: "Rule Providers", badgeVariant: "success", badgeLabel: "rules" },
 ];
 
 // ── API helpers per section ──

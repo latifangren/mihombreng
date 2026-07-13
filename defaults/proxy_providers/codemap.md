@@ -8,18 +8,18 @@ Single YAML file (`proxy.yaml`) conforming to Mihomo's proxy-provider file schem
 
 ## Flow
 ```
-config.yaml (proxy-providers.proxy)
+config.yaml (proxy-provider.proxy)
   └─> proxy.yaml (loaded by mihomo core)
         └── proxies: [] (empty by default)
               └── Populated via:
-                    ├── Web UI -> POST /api/v1/mihomo/proxy-providers (create)
-                    ├── Web UI -> POST /api/v1/mihomo/proxy-providers/upload (multipart)
+                    ├── Web UI -> POST /api/v1/mihomo/proxy-provider (create)
+                    ├── Web UI -> POST /api/v1/mihomo/proxy-provider/upload (multipart)
                     ├── Subscription converter -> POST /api/v1/converter/parse -> write
                     └── Direct file edit via config editor
 ```
 
 ## Integration
-- **Consumer**: `config.yaml` declares `proxy-providers.proxy` with `path: ./proxy_providers/proxy.yaml`
-- **API**: CRUD operations at `/api/v1/mihomo/proxy-providers/*` (list, read, create, update, delete, upload, download, rename)
+- **Consumer**: `config.yaml` declares `proxy-provider.proxy` with `path: ./proxy_providers/proxy.yaml`
+- **API**: CRUD operations at `/api/v1/mihomo/proxy-provider/*` (list, read, create, update, delete, upload, download, rename)
 - **Health check**: Mihomo pings `http://www.gstatic.com/generate_204` every 300s through each proxy
 - **Frontend**: File manager component (`web/src/components/manager/`) and proxy provider UI manage this file

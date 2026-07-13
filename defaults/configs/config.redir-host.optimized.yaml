@@ -108,7 +108,7 @@ profile:
   store-selected: true
   store-fake-ip: false
 
-proxy-providers:
+proxy-provider:
   ID:
     type: file
     path: ./proxy_providers/id.yaml
@@ -124,7 +124,7 @@ proxy-providers:
       url: http://www.gstatic.com/generate_204
       interval: 300
 
-rule-providers:
+rule-provider:
   AdBlock:
     type: http
     behavior: classical

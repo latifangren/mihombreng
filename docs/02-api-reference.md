@@ -176,27 +176,27 @@ All file operations work on the mihombreng working directory (`/etc/mihombreng`)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/mihomo/proxy-providers` | List proxy providers |
-| GET | `/api/v1/mihomo/proxy-providers/:filename` | Read provider content |
-| GET | `/api/v1/mihomo/proxy-providers/:filename/download` | Download provider |
-| POST | `/api/v1/mihomo/proxy-providers` | Create new provider |
-| POST | `/api/v1/mihomo/proxy-providers/upload` | Upload provider (multipart) |
-| PUT | `/api/v1/mihomo/proxy-providers/:filename` | Update provider content |
-| PUT | `/api/v1/mihomo/proxy-providers/:filename/rename` | Rename provider |
-| DELETE | `/api/v1/mihomo/proxy-providers/:filename` | Delete provider |
+| GET | `/api/v1/mihomo/proxy-provider` | List proxy providers |
+| GET | `/api/v1/mihomo/proxy-provider/:filename` | Read provider content |
+| GET | `/api/v1/mihomo/proxy-provider/:filename/download` | Download provider |
+| POST | `/api/v1/mihomo/proxy-provider` | Create new provider |
+| POST | `/api/v1/mihomo/proxy-provider/upload` | Upload provider (multipart) |
+| PUT | `/api/v1/mihomo/proxy-provider/:filename` | Update provider content |
+| PUT | `/api/v1/mihomo/proxy-provider/:filename/rename` | Rename provider |
+| DELETE | `/api/v1/mihomo/proxy-provider/:filename` | Delete provider |
 
 ### Rule Providers
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/mihomo/rule-providers` | List rule providers |
-| GET | `/api/v1/mihomo/rule-providers/:filename` | Read provider content |
-| GET | `/api/v1/mihomo/rule-providers/:filename/download` | Download provider |
-| POST | `/api/v1/mihomo/rule-providers` | Create new provider |
-| POST | `/api/v1/mihomo/rule-providers/upload` | Upload provider (multipart) |
-| PUT | `/api/v1/mihomo/rule-providers/:filename` | Update provider content |
-| PUT | `/api/v1/mihomo/rule-providers/:filename/rename` | Rename provider |
-| DELETE | `/api/v1/mihomo/rule-providers/:filename` | Delete provider |
+| GET | `/api/v1/mihomo/rule-provider` | List rule providers |
+| GET | `/api/v1/mihomo/rule-provider/:filename` | Read provider content |
+| GET | `/api/v1/mihomo/rule-provider/:filename/download` | Download provider |
+| POST | `/api/v1/mihomo/rule-provider` | Create new provider |
+| POST | `/api/v1/mihomo/rule-provider/upload` | Upload provider (multipart) |
+| PUT | `/api/v1/mihomo/rule-provider/:filename` | Update provider content |
+| PUT | `/api/v1/mihomo/rule-provider/:filename/rename` | Rename provider |
+| DELETE | `/api/v1/mihomo/rule-provider/:filename` | Delete provider |
 
 ---
 

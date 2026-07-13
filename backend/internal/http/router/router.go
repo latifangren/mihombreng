@@ -145,68 +145,68 @@ func Setup(r *gin.Engine, mihomoService domain.MihomoService, cfg *config.Config
 			mihomoGroup.PUT("/active-config", mihomoFilesHandler.SetActiveConfigPath)
 			mihomoGroup.POST("/providers/sync", mihomoFilesHandler.SyncProvider)
 
-			mihomoGroup.GET("/proxy-providers", func(c *gin.Context) {
+			mihomoGroup.GET("/proxy-provider", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "proxy_providers"})
 				mihomoFilesHandler.GetFiles(c)
 			})
-			mihomoGroup.GET("/proxy-providers/:filename", func(c *gin.Context) {
+			mihomoGroup.GET("/proxy-provider/:filename", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "proxy_providers"})
 				mihomoFilesHandler.GetFileContent(c)
 			})
-			mihomoGroup.GET("/proxy-providers/:filename/download", func(c *gin.Context) {
+			mihomoGroup.GET("/proxy-provider/:filename/download", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "proxy_providers"})
 				mihomoFilesHandler.DownloadFile(c)
 			})
-			mihomoGroup.POST("/proxy-providers", func(c *gin.Context) {
+			mihomoGroup.POST("/proxy-provider", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "proxy_providers"})
 				mihomoFilesHandler.CreateFile(c)
 			})
-			mihomoGroup.POST("/proxy-providers/upload", func(c *gin.Context) {
+			mihomoGroup.POST("/proxy-provider/upload", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "proxy_providers"})
 				mihomoFilesHandler.UploadFile(c)
 			})
-			mihomoGroup.PUT("/proxy-providers/:filename", func(c *gin.Context) {
+			mihomoGroup.PUT("/proxy-provider/:filename", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "proxy_providers"})
 				mihomoFilesHandler.UpdateFile(c)
 			})
-			mihomoGroup.PUT("/proxy-providers/:filename/rename", func(c *gin.Context) {
+			mihomoGroup.PUT("/proxy-provider/:filename/rename", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "proxy_providers"})
 				mihomoFilesHandler.RenameFile(c)
 			})
-			mihomoGroup.DELETE("/proxy-providers/:filename", func(c *gin.Context) {
+			mihomoGroup.DELETE("/proxy-provider/:filename", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "proxy_providers"})
 				mihomoFilesHandler.DeleteFile(c)
 			})
 
-			mihomoGroup.GET("/rule-providers", func(c *gin.Context) {
+			mihomoGroup.GET("/rule-provider", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "rule_providers"})
 				mihomoFilesHandler.GetFiles(c)
 			})
-			mihomoGroup.GET("/rule-providers/:filename", func(c *gin.Context) {
+			mihomoGroup.GET("/rule-provider/:filename", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "rule_providers"})
 				mihomoFilesHandler.GetFileContent(c)
 			})
-			mihomoGroup.GET("/rule-providers/:filename/download", func(c *gin.Context) {
+			mihomoGroup.GET("/rule-provider/:filename/download", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "rule_providers"})
 				mihomoFilesHandler.DownloadFile(c)
 			})
-			mihomoGroup.POST("/rule-providers", func(c *gin.Context) {
+			mihomoGroup.POST("/rule-provider", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "rule_providers"})
 				mihomoFilesHandler.CreateFile(c)
 			})
-			mihomoGroup.POST("/rule-providers/upload", func(c *gin.Context) {
+			mihomoGroup.POST("/rule-provider/upload", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "rule_providers"})
 				mihomoFilesHandler.UploadFile(c)
 			})
-			mihomoGroup.PUT("/rule-providers/:filename", func(c *gin.Context) {
+			mihomoGroup.PUT("/rule-provider/:filename", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "rule_providers"})
 				mihomoFilesHandler.UpdateFile(c)
 			})
-			mihomoGroup.PUT("/rule-providers/:filename/rename", func(c *gin.Context) {
+			mihomoGroup.PUT("/rule-provider/:filename/rename", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "rule_providers"})
 				mihomoFilesHandler.RenameFile(c)
 			})
-			mihomoGroup.DELETE("/rule-providers/:filename", func(c *gin.Context) {
+			mihomoGroup.DELETE("/rule-provider/:filename", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "rule_providers"})
 				mihomoFilesHandler.DeleteFile(c)
 			})

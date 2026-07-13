@@ -118,7 +118,7 @@ function inferProviderMeta(content: string) {
 }
 
 function providerPath(kind: ProviderKind, name: string) {
-  return kind === "proxy" ? `proxy-providers/${name}` : `rule-providers/${name}`;
+  return kind === "proxy" ? `proxy-provider/${name}` : `rule-provider/${name}`;
 }
 
 function ProviderSkeleton() {

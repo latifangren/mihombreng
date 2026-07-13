@@ -16,7 +16,7 @@ mihombreng.yaml (mihomo.config_path)
         │     ├── nameserver: Cloudflare DoH, Google DoH
         │     └── fallback: Cloudflare 1.1.1.1, 1.0.0.1
         ├── Sniffer: HTTP/80,8080-8880 + TLS/443,8443
-        ├── proxy-providers.proxy -> ./proxy_providers/proxy.yaml (file type, 300s health check)
+        ├── proxy-provider.proxy -> ./proxy_providers/proxy.yaml (file type, 300s health check)
         └── rules: [MATCH -> Umum group]
 ```
 

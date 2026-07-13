@@ -19,6 +19,17 @@ A lightweight, high-performance controller and dashboard for the **Mihomo (Clash
 - **Hardened Security**: Mandatory token-based API authentication (Bearer tokens and WebSocket subprotocols) and per-IP request rate limiting.
 - **Package Integration**: Native packaging scripts for Linux `systemd` and OpenWrt SDK (`procd` and LuCI package outputs).
 
+## Screenshots
+
+### Dashboard
+![Dashboard](docs/images/dashboard.png)
+
+### Mihomo Core Status & Logs
+![Mihomo Core Status & Logs](docs/images/mihomo.png)
+
+### Settings & Backups
+![Settings & Backups](docs/images/settings.png)
+
 ## Quick Start
 
 ### Local build

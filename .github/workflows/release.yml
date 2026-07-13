@@ -5,6 +5,12 @@ on:
       - main      # Triggers on push/merge to main branch
     paths:
       - 'defaults/mihombreng.yaml'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force release even if version exists'
+        required: false
+        default: 'false'
 
 jobs:
   check-and-release:
@@ -27,15 +33,20 @@ jobs:
       - name: Check if Release Exists
         id: check_release
         run: |
-          TAG_NAME="v${{ steps.get_version.outputs.VERSION }}"
-          STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG_NAME")
-          if [ "$STATUS_CODE" = "200" ]; then
-            echo "Release $TAG_NAME already exists. Skipping build."
-            echo "EXISTS=true" >> $GITHUB_OUTPUT
-          else
-            echo "Release $TAG_NAME does not exist. Proceeding with build."
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            echo "Force option enabled. Proceeding with build regardless of tag status."
             echo "EXISTS=false" >> $GITHUB_OUTPUT
+          else
+            TAG_NAME="v${{ steps.get_version.outputs.VERSION }}"
+            STATUS_CODE=$(curl -o /dev/null -s -w "%{http_code}" -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG_NAME")
+            if [ "$STATUS_CODE" = "200" ]; then
+              echo "Release $TAG_NAME already exists. Skipping build."
+              echo "EXISTS=true" >> $GITHUB_OUTPUT
+            else
+              echo "Release $TAG_NAME does not exist. Proceeding with build."
+              echo "EXISTS=false" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Set up Go

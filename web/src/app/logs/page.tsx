@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { DataState } from "@/components/ui/data-state";
 import { RetroBtn } from "@/components/ui/retro-btn";
 import { useLogs } from "@/hooks/use-logs";
+import { cn } from "@/utils/cn";
 import {
   ArrowDownAZ,
   ArrowUpAZ,
@@ -140,7 +141,10 @@ function StreamStatusCard({
 }
 
 export default function LogsPage() {
-  const { logs, paused, clear, togglePause, connectionState, lastStatus, reconnectAttempt } = useLogs("/api/v1/mihomo/logs");
+  const [logSource, setLogSource] = useState<"mihomo" | "app">("mihomo");
+  const endpoint = logSource === "mihomo" ? "/api/v1/mihomo/logs" : "/api/v1/app/logs";
+  const clearEndpoint = logSource === "mihomo" ? "/api/v1/mihomo/logs" : "/api/v1/app/logs";
+  const { logs, paused, clear, togglePause, connectionState, lastStatus, reconnectAttempt } = useLogs(endpoint, clearEndpoint);
   const [filter, setFilter] = useState<Level>("all");
   const [query, setQuery] = useState("");
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
@@ -175,9 +179,10 @@ export default function LogsPage() {
     const text = formatLogLines(displayLogs);
     const blob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
+    const prefix = logSource === "mihomo" ? "mihomo-core" : "mihombreng-app";
     const a = document.createElement("a");
     a.href = url;
-    a.download = `mihombreng-logs-${new Date().toISOString().slice(0, 19).replace(/[:.]/g, "-")}.txt`;
+    a.download = `${prefix}-logs-${new Date().toISOString().slice(0, 19).replace(/[:.]/g, "-")}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Log file downloaded");
@@ -187,9 +192,10 @@ export default function LogsPage() {
     const text = convertLogsToCSV(displayLogs);
     const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
+    const prefix = logSource === "mihomo" ? "mihomo-core" : "mihombreng-app";
     const a = document.createElement("a");
     a.href = url;
-    a.download = `mihombreng-logs-${new Date().toISOString().slice(0, 19).replace(/[:.]/g, "-")}.csv`;
+    a.download = `${prefix}-logs-${new Date().toISOString().slice(0, 19).replace(/[:.]/g, "-")}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("CSV logs downloaded");
@@ -199,9 +205,10 @@ export default function LogsPage() {
     const text = convertLogsToJSON(displayLogs);
     const blob = new Blob([text], { type: "application/json" });
     const url = URL.createObjectURL(blob);
+    const prefix = logSource === "mihomo" ? "mihomo-core" : "mihombreng-app";
     const a = document.createElement("a");
     a.href = url;
-    a.download = `mihombreng-logs-${new Date().toISOString().slice(0, 19).replace(/[:.]/g, "-")}.json`;
+    a.download = `${prefix}-logs-${new Date().toISOString().slice(0, 19).replace(/[:.]/g, "-")}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("JSON logs downloaded");
@@ -254,7 +261,9 @@ export default function LogsPage() {
               </span>
             </div>
             <p className="mt-2 font-mono text-xs uppercase tracking-wider text-text-muted">
-              Live Mihomo log stream with search, level filter, and export
+              {logSource === "mihomo"
+                ? "Live Mihomo log stream with search, level filter, and export"
+                : "Live Mihombreng system log stream with search, level filter, and export"}
             </p>
             <div className="mt-5 flex flex-wrap items-end gap-x-6 gap-y-2">
               <div>
@@ -316,7 +325,33 @@ export default function LogsPage() {
           title="Log Stream"
           icon={<TerminalSquare className="h-4 w-4" />}
           action={
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex rounded-md border-2 border-black bg-black/10 p-0.5 font-mono text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => setLogSource("mihomo")}
+                  className={cn(
+                    "rounded px-2 py-0.5 transition-colors uppercase tracking-wider font-bold",
+                    logSource === "mihomo"
+                      ? "bg-primary text-black"
+                      : "text-text-muted hover:text-text"
+                  )}
+                >
+                  Core
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLogSource("app")}
+                  className={cn(
+                    "rounded px-2 py-0.5 transition-colors uppercase tracking-wider font-bold",
+                    logSource === "app"
+                      ? "bg-primary text-black"
+                      : "text-text-muted hover:text-text"
+                  )}
+                >
+                  System
+                </button>
+              </div>
               <span className="inline-flex items-center rounded-full bg-black/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-text-muted">
                 {filteredLogs.length}
               </span>

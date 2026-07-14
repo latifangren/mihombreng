@@ -16,6 +16,7 @@ import {
   Clock,
   Loader2,
   Globe,
+  BookOpen,
 } from "lucide-react";
 import type { MihomoStatus } from "@/types";
 
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { to: "/tools", label: "Tools", icon: Wrench },
   { to: "/backup", label: "Backup", icon: Archive },
   { to: "/diagnostics", label: "Diagnostics", icon: Activity },
+  { to: "/docs", label: "Docs", icon: BookOpen },
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 

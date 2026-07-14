@@ -15,6 +15,7 @@ const LogsPage = lazy(() => import("@/app/logs/page"));
 const ToolsPage = lazy(() => import("@/app/tools/page"));
 const BackupPage = lazy(() => import("@/app/backup/page"));
 const DiagnosticsPage = lazy(() => import("@/app/diagnostics/page"));
+const DocsPage = lazy(() => import("@/app/docs/page"));
 const SettingsPage = lazy(() => import("@/app/settings/page"));
 const TrafficPage = lazy(() => import("@/app/traffic/page"));
 const ConnectionsPage = lazy(() => import("@/app/connections/page"));
@@ -64,6 +65,7 @@ export default function App() {
           <Route path="tools" element={<E><ToolsPage /></E>} />
           <Route path="backup" element={<E><BackupPage /></E>} />
           <Route path="diagnostics" element={<E><DiagnosticsPage /></E>} />
+          <Route path="docs" element={<E><DocsPage /></E>} />
           <Route path="settings" element={<E><SettingsPage /></E>} />
           <Route path="traffic" element={<E><TrafficPage /></E>} />
           <Route path="connections" element={<E><ConnectionsPage /></E>} />

@@ -61,6 +61,10 @@ export default function SettingsPage() {
   const [dirty, setDirty] = useState(false);
   const savedConfigRef = useRef<string>("");
 
+  const [isExtendedOpen, setIsExtendedOpen] = useState(false);
+  const [rawJson, setRawJson] = useState("");
+  const [rawJsonError, setRawJsonError] = useState<string | null>(null);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -71,6 +75,7 @@ export default function SettingsPage() {
         mihomoApi.getConfigs().catch(() => []),
       ]);
       setConfig(cfg);
+      setRawJson(JSON.stringify({ mihomo: cfg.mihomo, logging: cfg.logging }, null, 2));
       setCoreVersion(version);
       setAvailableConfigs(configs);
       setDirty(false);
@@ -134,6 +139,32 @@ export default function SettingsPage() {
     setDirty(JSON.stringify(next) !== savedConfigRef.current);
   };
 
+  const handleBypassChange = (field: "BypassMACs" | "BypassIPs" | "BypassIP6s", val: string) => {
+    const list = val.split("\n").map(x => x.trim()).filter(Boolean);
+    handleRoutingChange(field, list);
+  };
+
+  const handleRawSave = () => {
+    try {
+      const parsed = JSON.parse(rawJson);
+      if (!parsed.mihomo || !parsed.logging) {
+        throw new Error("Missing 'mihomo' or 'logging' properties.");
+      }
+      const next = {
+        ...config!,
+        mihomo: parsed.mihomo,
+        logging: parsed.logging,
+      };
+      setConfig(next);
+      setDirty(JSON.stringify(next) !== savedConfigRef.current);
+      setRawJsonError(null);
+      toast.success("Extended config updated in memory — save settings to persist to disk");
+    } catch (err) {
+      setRawJsonError(err instanceof Error ? err.message : "Invalid JSON format");
+      toast.error("Invalid configuration format.");
+    }
+  };
+
   const handleSubmit = async () => {
     if (!config) return;
     if (validationIssues.length > 0) {
@@ -149,6 +180,7 @@ export default function SettingsPage() {
       savedConfigRef.current = JSON.stringify(config);
       setDirty(false);
       setLastLoadedAt(new Date());
+      setRawJson(JSON.stringify({ mihomo: config.mihomo, logging: config.logging }, null, 2));
       toast.success("Configuration saved — restart Mihomo to apply");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to save configuration");
@@ -341,6 +373,27 @@ export default function SettingsPage() {
               />
             </div>
 
+            <div className="mt-4 space-y-3">
+              <ConfigTextArea
+                label="Bypass MAC Addresses"
+                placeholder="00:11:22:33:44:55 (one per line)"
+                value={(config.mihomo.Routing.BypassMACs || []).join("\n")}
+                onChange={(v) => handleBypassChange("BypassMACs", v)}
+              />
+              <ConfigTextArea
+                label="Bypass IPv4 Address / CIDR"
+                placeholder="192.168.1.100 (one per line)"
+                value={(config.mihomo.Routing.BypassIPs || []).join("\n")}
+                onChange={(v) => handleBypassChange("BypassIPs", v)}
+              />
+              <ConfigTextArea
+                label="Bypass IPv6 Address / CIDR"
+                placeholder="fe80::100 (one per line)"
+                value={(config.mihomo.Routing.BypassIP6s || []).join("\n")}
+                onChange={(v) => handleBypassChange("BypassIP6s", v)}
+              />
+            </div>
+
             {validating && (
               <div className="mt-3 font-mono text-[9px] text-text-muted animate-pulse">
                 Validating routing configuration...
@@ -411,6 +464,52 @@ export default function SettingsPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── Extended Settings (Danger Zone) ── */}
+      <div className="mt-6">
+        <Card
+          title="Extended Settings (Raw Config)"
+          icon={<Shield className="h-4 w-4 text-warning" />}
+          action={
+            <RetroBtn
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsExtendedOpen(!isExtendedOpen)}
+            >
+              {isExtendedOpen ? "Hide" : "Show"}
+            </RetroBtn>
+          }
+        >
+          {isExtendedOpen ? (
+            <div className="space-y-4">
+              <div className="rounded-[8px] border-2 border-warning bg-warning/5 p-3.5 flex items-start gap-2.5">
+                <AlertOctagon className="h-5 w-5 text-warning flex-shrink-0" />
+                <div className="font-mono text-[11px] leading-relaxed text-text-muted">
+                  <strong className="text-warning uppercase font-semibold">Warning: Danger Zone.</strong> Changing raw config keys directly bypasses normal validation checks and can break the Mihomo process lifecycle. Make sure any edited keys are correctly formatted. Click <strong>Apply Raw Config</strong> below to stage changes in memory.
+                </div>
+              </div>
+              <textarea
+                value={rawJson}
+                onChange={(e) => setRawJson(e.target.value)}
+                rows={12}
+                className="w-full rounded border border-border bg-surface p-3 font-mono text-xs text-text outline-none focus:border-warning"
+              />
+              {rawJsonError && (
+                <p className="font-mono text-[10px] text-danger">Error: {rawJsonError}</p>
+              )}
+              <div className="flex justify-end">
+                <RetroBtn size="sm" variant="warning" onClick={handleRawSave}>
+                  Apply Raw Config
+                </RetroBtn>
+              </div>
+            </div>
+          ) : (
+            <p className="font-mono text-[10px] text-text-muted">
+              Advanced raw configuration parameters editor. Click Show to unfold.
+            </p>
+          )}
+        </Card>
       </div>
     </div>
   );
@@ -504,6 +603,31 @@ function ConfigCheckbox({
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
         className="h-4 w-4 shrink-0 accent-primary"
+      />
+    </div>
+  );
+}
+
+function ConfigTextArea({
+  label,
+  value,
+  placeholder,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5 rounded-[8px] border border-black/70 bg-black/15 px-4 py-2.5">
+      <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{label}</span>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        rows={3}
+        className="w-full rounded border border-border bg-surface px-3 py-1.5 font-mono text-sm text-text outline-none focus:border-primary resize-y"
       />
     </div>
   );

@@ -15,6 +15,9 @@ mihomo:
     tcp: tun
     udp: tun
     tun_device: ""
+    bypass_macs: []
+    bypass_ips: []
+    bypass_ip6s: []
 logging:
   level: info
   file: /var/log/mihombreng.log

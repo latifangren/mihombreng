@@ -102,10 +102,10 @@ chmod +x "$BUILD_DIR/mihomo"
 
 echo "[6/6] Downloading assets..."
 # GeoIP
-wget -q -O "$BUILD_DIR/country.mmdb" https://github.com/rtaserver/meta-rules-dat/releases/latest/download/country.mmdb
-wget -q -O "$BUILD_DIR/geoip.dat" https://github.com/rtaserver/meta-rules-dat/releases/latest/download/geoip.dat
-wget -q -O "$BUILD_DIR/geosite.dat" https://github.com/rtaserver/meta-rules-dat/releases/latest/download/geosite.dat
-wget -q -O "$BUILD_DIR/geoip.metadb" https://github.com/rtaserver/meta-rules-dat/releases/download/latest/geoip.metadb
+wget -q -O "$BUILD_DIR/country.mmdb" https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/country.mmdb
+wget -q -O "$BUILD_DIR/geoip.dat" https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/geoip.dat
+wget -q -O "$BUILD_DIR/geosite.dat" https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/geosite.dat
+wget -q -O "$BUILD_DIR/geoip.metadb" https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb
 
 # UI Assets
 curl -sL -o "$BUILD_DIR/zashboard.zip" "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"

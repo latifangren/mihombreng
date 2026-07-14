@@ -86,10 +86,10 @@ define Build/Compile
 		gunzip -f $(PKG_BUILD_DIR)/mihomo.gz; \
 		chmod +x $(PKG_BUILD_DIR)/mihomo; \
 		echo "Downloading GeoIP assets..."; \
-		wget -q -O $(PKG_BUILD_DIR)/country.mmdb https://github.com/rtaserver/meta-rules-dat/releases/latest/download/country.mmdb; \
-		wget -q -O $(PKG_BUILD_DIR)/geoip.dat https://github.com/rtaserver/meta-rules-dat/releases/latest/download/geoip.dat; \
-		wget -q -O $(PKG_BUILD_DIR)/geosite.dat https://github.com/rtaserver/meta-rules-dat/releases/latest/download/geosite.dat; \
-		wget -q -O $(PKG_BUILD_DIR)/geoip.metadb https://github.com/rtaserver/meta-rules-dat/releases/download/latest/geoip.metadb; \
+		wget -q -O $(PKG_BUILD_DIR)/country.mmdb https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/country.mmdb; \
+		wget -q -O $(PKG_BUILD_DIR)/geoip.dat https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/geoip.dat; \
+		wget -q -O $(PKG_BUILD_DIR)/geosite.dat https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/geosite.dat; \
+		wget -q -O $(PKG_BUILD_DIR)/geoip.metadb https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb; \
 		echo "Downloading Zashboard..."; \
 		curl -sL -o $(PKG_BUILD_DIR)/zashboard.zip "https://github.com/Zephyruso/zashboard/releases/latest/download/dist.zip"; \
 		mkdir -p $(PKG_BUILD_DIR)/ui/zashboard; \

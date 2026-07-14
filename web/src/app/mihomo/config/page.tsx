@@ -144,7 +144,7 @@ export default function ConfigEditorPage() {
   const invalidCount = Object.values(validation).filter((item) => !item.valid).length;
 
   useEffect(() => {
-    if (!activeFile || activeFile.type !== "config" || !activeFile.dirty) return;
+    if (!activeFile || activeFile.type !== "config" || !activeFile.dirty || activeFile.name.endsWith(".md")) return;
 
     const timeoutId = setTimeout(async () => {
       setValidating(activeFile.name);
@@ -162,7 +162,7 @@ export default function ConfigEditorPage() {
   }, [activeFile]);
 
   useEffect(() => {
-    if (!editorRef.current || !activeFile || !monacoInstance) return;
+    if (!editorRef.current || !activeFile || !monacoInstance || activeFile.name.endsWith(".md")) return;
     const model = editorRef.current.getModel();
     if (!model) return;
 
@@ -283,7 +283,7 @@ export default function ConfigEditorPage() {
   );
 
   const handleValidate = useCallback(async (): Promise<ConfigValidationResult | null> => {
-    if (!activeFile || activeFile.type !== "config") return null;
+    if (!activeFile || activeFile.type !== "config" || activeFile.name.endsWith(".md")) return null;
     setValidating(activeFile.name);
     try {
       const result = await mihomoApi.validateConfig(activeFile.name, activeFile.content);
@@ -319,6 +319,7 @@ export default function ConfigEditorPage() {
   };
 
   const saveTab = useCallback(async (tab: FileTab) => {
+    if (tab.name.endsWith(".md")) return false;
     if (tab.type === "config") {
       let latestValidation: ConfigValidationResult | null = validation[tab.name] || null;
       if (!latestValidation || tab.dirty) {
@@ -586,7 +587,7 @@ export default function ConfigEditorPage() {
             : "text-text-muted hover:bg-surface/50 hover:text-text"
         )}
       >
-        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", isDirty ? "bg-warning" : isOpen ? "bg-info" : "bg-text-muted/50")} />
+        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", isDirty ? "bg-warning" : isOpen ? (name.endsWith(".md") ? "bg-primary" : "bg-info") : "bg-text-muted/50")} />
         <span className="truncate">{name}</span>
       </button>
     );
@@ -693,33 +694,38 @@ export default function ConfigEditorPage() {
                   <p className="font-mono text-[10px] italic text-text-muted">empty</p>
                 ) : (
                   <div className="space-y-0.5">
-                    {configs.map((name) => (
-                      <div key={name} className="group flex items-center">
-                        <div className="min-w-0 flex-1">{renderFileButton(name, "config")}</div>
-                        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                          {activeConfig === name ? (
-                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" title="Active config" />
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => void handleSetActive(name)}
-                              className="rounded px-1 py-0.5 font-mono text-[9px] text-text-muted hover:text-text"
-                              title="Set as active"
-                            >
-                              Live
-                            </button>
+                    {configs.map((name) => {
+                      const isMd = name;
+                      return (
+                        <div key={name} className="group flex items-center">
+                          <div className="min-w-0 flex-1">{renderFileButton(name, "config")}</div>
+                          {!isMd.endsWith(".md") && (
+                            <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                              {activeConfig === name ? (
+                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" title="Active config" />
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleSetActive(name)}
+                                  className="rounded px-1 py-0.5 font-mono text-[9px] text-text-muted hover:text-text"
+                                  title="Set as active"
+                                >
+                                  Live
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setDeleteTarget(name)}
+                                className="rounded px-1 py-0.5 font-mono text-[9px] text-danger hover:text-danger/80"
+                                title="Delete config"
+                              >
+                                Del
+                              </button>
+                            </div>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => setDeleteTarget(name)}
-                            className="rounded px-1 py-0.5 font-mono text-[9px] text-danger hover:text-danger/80"
-                            title="Delete config"
-                          >
-                            Del
-                          </button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -810,6 +816,7 @@ export default function ConfigEditorPage() {
                 <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="info">{tabs.length} open</Badge>
+                    {activeFile?.name.endsWith(".md") && <Badge variant="info">Doc (Read-Only)</Badge>}
                     {dirtyCount > 0 && <Badge variant="warning">{dirtyCount} unsaved</Badge>}
                     {activeFile && activeConfig === activeFile.name && <Badge variant="success">active</Badge>}
                     {activeFile?.type === "config" && activeValidation?.valid && <Badge variant="success">validated</Badge>}
@@ -828,7 +835,7 @@ export default function ConfigEditorPage() {
                         Diff View
                       </RetroBtn>
                     )}
-                    {activeFile?.type === "config" && (
+                    {activeFile?.type === "config" && !activeFile.name.endsWith(".md") && (
                       <RetroBtn
                         variant="ghost"
                         size="sm"
@@ -840,7 +847,7 @@ export default function ConfigEditorPage() {
                         Validate
                       </RetroBtn>
                     )}
-                    {activeFile?.dirty && (
+                    {activeFile?.dirty && !activeFile.name.endsWith(".md") && (
                       <RetroBtn
                         variant="ghost"
                         size="sm"
@@ -851,7 +858,7 @@ export default function ConfigEditorPage() {
                         Revert Draft
                       </RetroBtn>
                     )}
-                    {activeFile && activeConfig !== activeFile.name && activeFile.type === "config" && (
+                    {activeFile && activeConfig !== activeFile.name && activeFile.type === "config" && !activeFile.name.endsWith(".md") && (
                       <RetroBtn
                         variant="ghost"
                         size="sm"
@@ -873,27 +880,29 @@ export default function ConfigEditorPage() {
                     >
                       Save All
                     </RetroBtn>
-                    <RetroBtn
-                      variant="primary"
-                      size="sm"
-                      onClick={handleSave}
-                      disabled={!activeFile?.dirty}
-                      loading={saving === activeFile?.name}
-                      title="Save current file (Ctrl+S)"
-                    >
-                      <Save className="mr-1.5 inline-block h-3.5 w-3.5" />
-                      Save Draft
-                    </RetroBtn>
+                    {!activeFile?.name.endsWith(".md") && (
+                      <RetroBtn
+                        variant="primary"
+                        size="sm"
+                        onClick={handleSave}
+                        disabled={!activeFile?.dirty}
+                        loading={saving === activeFile?.name}
+                        title="Save current file (Ctrl+S)"
+                      >
+                        <Save className="mr-1.5 inline-block h-3.5 w-3.5" />
+                        Save Draft
+                      </RetroBtn>
+                    )}
                   </div>
                 </div>
               </div>
 
               {activeFile && (
                 <div className="grid gap-3 border-x-2 border-t-2 border-black bg-background p-3 md:grid-cols-4">
-                  <MetaTile label="File" value={activeFile.name} detail={formatFileType(activeFile.type)} />
-                  <MetaTile label="State" value={activeFile.dirty ? "Unsaved" : "Saved"} detail={activeFile.dirty ? "Local browser buffer" : "Matches last loaded copy"} />
+                  <MetaTile label="File" value={activeFile.name} detail={activeFile.name.endsWith(".md") ? "Documentation" : formatFileType(activeFile.type)} />
+                  <MetaTile label="State" value={activeFile.name.endsWith(".md") ? "Read-Only" : (activeFile.dirty ? "Unsaved" : "Saved")} detail={activeFile.name.endsWith(".md") ? "System documentation" : (activeFile.dirty ? "Local browser buffer" : "Matches last loaded copy")} />
                   <MetaTile label="Size" value={`${formatLineCount(activeFile.content)} lines`} detail={`${activeFile.content.length.toLocaleString()} chars`} />
-                  <MetaTile label="Runtime" value={activeConfig === activeFile.name ? "Active" : "Inactive"} detail={activeFile.type === "config" ? "Mihomo config slot" : "Referenced by config"} />
+                  <MetaTile label="Runtime" value={activeFile.name.endsWith(".md") ? "N/A" : (activeConfig === activeFile.name ? "Active" : "Inactive")} detail={activeFile.name.endsWith(".md") ? "System documentation" : (activeFile.type === "config" ? "Mihomo config slot" : "Referenced by config")} />
                 </div>
               )}
 
@@ -903,7 +912,7 @@ export default function ConfigEditorPage() {
                   showDiff ? (
                     <DiffEditor
                       key={`diff-${activeFile.name}`}
-                      language="yaml"
+                      language={activeFile.name.endsWith(".md") ? "markdown" : "yaml"}
                       theme="vs-dark"
                       original={activeFile.savedContent}
                       modified={activeFile.content}
@@ -919,12 +928,13 @@ export default function ConfigEditorPage() {
                         automaticLayout: true,
                         padding: { top: 8 },
                         originalEditable: false,
+                        readOnly: activeFile.name.endsWith(".md"),
                       }}
                     />
                   ) : (
                     <Editor
                       key={activeFile.name}
-                      language="yaml"
+                      language={activeFile.name.endsWith(".md") ? "markdown" : "yaml"}
                       theme="vs-dark"
                       value={activeFile.content}
                       onChange={handleEditorChange}
@@ -940,6 +950,7 @@ export default function ConfigEditorPage() {
                         bracketPairColorization: { enabled: true },
                         automaticLayout: true,
                         padding: { top: 8 },
+                        readOnly: activeFile.name.endsWith(".md"),
                       }}
                     />
                   )

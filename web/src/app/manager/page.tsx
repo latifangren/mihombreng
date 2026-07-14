@@ -167,20 +167,25 @@ function FileItem({
   onDownload: () => void;
   onDelete: () => void;
 }) {
+  const isMd = name.endsWith(".md");
   return (
     <div className="flex items-center justify-between rounded-[8px] border border-border bg-background px-4 py-2.5">
       <span className="font-mono text-sm text-text truncate mr-2">{name}</span>
       <div className="flex shrink-0 items-center gap-2">
-        <Badge variant={badgeVariant}>{badgeLabel}</Badge>
-        <button type="button" onClick={onRename} className="text-text-muted hover:text-info" title="Rename" aria-label={`Rename ${name}`}>
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
+        <Badge variant={isMd ? "info" : badgeVariant}>{isMd ? "doc" : badgeLabel}</Badge>
+        {!isMd && (
+          <button type="button" onClick={onRename} className="text-text-muted hover:text-info" title="Rename" aria-label={`Rename ${name}`}>
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
         <button type="button" onClick={onDownload} className="text-text-muted hover:text-primary" title="Download" aria-label={`Download ${name}`}>
           <Download className="h-3.5 w-3.5" />
         </button>
-        <button type="button" onClick={onDelete} className="text-text-muted hover:text-danger" title="Delete" aria-label={`Delete ${name}`}>
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        {!isMd && (
+          <button type="button" onClick={onDelete} className="text-text-muted hover:text-danger" title="Delete" aria-label={`Delete ${name}`}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );

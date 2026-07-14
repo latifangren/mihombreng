@@ -7,26 +7,25 @@ tproxy-port: 7894
 allow-lan: true
 bind-address: '*'
 routing-mark: 0x100
-log-level: silent
+log-level: warning
 ipv6: false
 external-controller: 0.0.0.0:9090
-external-ui: ui #change this to your own path if you want to use a custom web UI or update to ui/metacubexd or another web UI if you want to use a custom web UI
-secret: "mihombreng" #change this to your own password
+external-ui: ui
+secret: "mihombreng"
 external-controller-cors:
   allow-private-network: true
   allow-origins:
-  - tauri://localhost
-  - http://tauri.localhost
-  - https://yacd.metacubex.one
-  - https://metacubex.github.io
-  - https://board.zash.run.place
+    - tauri://localhost
+    - http://tauri.localhost
+    - https://yacd.metacubex.one
+    - https://metacubex.github.io
+    - https://board.zash.run.place
 experimental:
   ignore-resolve-fail: true
   sniff-tls-sni: true
   tracing: false
   tcp-concurrent: true
   udp-fallback-policy: DIRECT
-  prefer-dns-server: null
 dns:
   enable: true
   ipv6: false
@@ -35,63 +34,65 @@ dns:
   enhanced-mode: fake-ip
   fake-ip-range: 198.18.0.1/16
   fake-ip-filter:
-  - '*.lan'
-  - '*.local'
-  - +.n.n.srv.nintendo.net
-  - +.srv.nintendo.net
-  - +.ntp.org.cn
-  - +.pool.ntp.org
-  - ntp.ubuntu.com
-  - time.windows.com
-  - xbox.*.microsoft.com
-  - '*.*.xboxlive.com'
-  - +.*
-  - '*.msftconnecttest.com'
-  - '*.msftncsi.com'
+    - '*.lan'
+    - '*.local'
+    - +.n.n.srv.nintendo.net
+    - +.srv.nintendo.net
+    - +.ntp.org.cn
+    - +.pool.ntp.org
+    - ntp.ubuntu.com
+    - time.windows.com
+    - time.apple.com
+    - xbox.*.microsoft.com
+    - '*.*.xboxlive.com'
+    - +.*
+    - '*.msftconnecttest.com'
+    - '*.msftncsi.com'
   nameserver:
-  - https://cloudflare-dns.com/dns-query
-  - https://dns.google/dns-query
+    - https://cloudflare-dns.com/dns-query
+    - https://dns.google/dns-query
   fallback:
-  - 1.1.1.1
-  - 8.8.8.8
-  - 9.9.9.9
+    - 1.1.1.1
+    - 8.8.8.8
+    - 9.9.9.9
   fallback-filter:
     geoip: true
     geoip-code: ID
     ipcidr:
-    - 0.0.0.0/8
-    - 10.0.0.0/8
-    - 100.64.0.0/10
-    - 127.0.0.0/8
-    - 169.254.0.0/16
-    - 172.16.0.0/12
-    - 192.168.0.0/16
-    - 224.0.0.0/4
-    - 240.0.0.0/4
+      - 0.0.0.0/8
+      - 10.0.0.0/8
+      - 100.64.0.0/10
+      - 127.0.0.0/8
+      - 169.254.0.0/16
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      - 224.0.0.0/4
+      - 240.0.0.0/4
   proxy-server-nameserver:
-  - 1.1.1.1
-  - 8.8.8.8
+    - 1.1.1.1
+    - 8.8.8.8
 geodata-mode: true
 geodata-loader: memconservative
 global-client-fingerprint: chrome
 geox-url:
-  mmdb: https://github.com/rizkikotet-dev/GeoSite-WRT/releases/download/latest/country.mmdb
-  geoip: https://github.com/rizkikotet-dev/GeoSite-WRT/releases/download/latest/geoip.dat
-  geosite: https://github.com/rizkikotet-dev/GeoSite-WRT/releases/download/latest/geosite.dat
+  mmdb: https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/country.mmdb
+  geoip: https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/geoip.dat
+  geosite: https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/geosite.dat
 ntp:
   enable: true
   server: time.apple.com
   port: 123
-  interval: 30
+  interval: 600
   write-to-system: true
-authentication:
 keep-alive-interval: 15
 tcp-concurrent: true
 unified-delay: true
 tun:
   enable: true
-  stack: gvisor
+  stack: system
   device: Meta
+  auto-route: true
+  auto-detect-interface: true
   dns-hijack:
     - any:53
 sniffer:
@@ -105,25 +106,27 @@ sniffer:
   skip-domain:
     - '+.microsoft.com'
     - '+.windows.com'
+    - '*.msftconnecttest.com'
+    - '*.msftncsi.com'
 profile:
   store-selected: true
   store-fake-ip: true
-proxy-providers: #change this to your own proxy provider file path if you want to use a custom proxy provider
+proxy-providers:
   ID:
     type: file
-    path: ./proxy_providers/id.yaml #change this to your own proxy provider file path
+    path: ./proxy_providers/id.yaml
     health-check:
       enable: true
       url: http://www.gstatic.com/generate_204
       interval: 300
   SG:
     type: file
-    path: ./proxy_providers/sg.yaml #change this to your own proxy provider file path
+    path: ./proxy_providers/sg.yaml
     health-check:
       enable: true
       url: http://www.gstatic.com/generate_204
-      interval: 300     
-rule-providers: #change this to your own rule provider file path if you want to use a custom rule provider
+      interval: 300
+rule-providers:
   AdBlock:
     type: http
     behavior: classical
@@ -137,60 +140,92 @@ rule-providers: #change this to your own rule provider file path if you want to 
     url: https://raw.githubusercontent.com/latifangren/CLASH-CONFIG-by-Latifan/main/rule_provider/streaming.yaml
     path: ./rule_providers/streaming.yaml
     interval: 86400
+    download-detour: DIRECT
   Speedtest:
     type: http
     behavior: classical
     url: https://raw.githubusercontent.com/latifangren/clash-verge-windows-config/refs/heads/main/rule_provider/speedtest.yaml
     path: ./rule_providers/speedtest.yaml
     interval: 86400
+    download-detour: DIRECT
   Games:
     type: http
     behavior: classical
     url: https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/refs/heads/master/rule/Clash/Game/Game.yaml
     path: ./rule_providers/games.yaml
     interval: 86400
-proxy-groups: #change this to your own proxy group configuration
-- name: ID
-  type: select
-  use:
-  - ID
-- name: SG
-  type: select
-  use:
-  - SG
-- name: general
-  type: select
-  disable-udp: false
-  proxies:
-  - DIRECT
-- name: AdBlock
-  type: select
-  proxies:
-  - REJECT
-  - DIRECT
-- name: STREAMING
-  type: select
-  proxies:
-  - DIRECT
-  - REJECT
-- name: GAMES
-  type: select
-  proxies:
-  - DIRECT
-  - REJECT
-- name: SPEEDTEST
-  type: select
-  proxies:
-  - DIRECT
-  - REJECT
-- name: GLOBAL
-  type: select
-  proxies:
-  - DIRECT
-  - REJECT
+    download-detour: DIRECT
+proxy-groups:
+  - name: ID
+    type: select
+    use:
+      - ID
+  - name: SG
+    type: select
+    use:
+      - SG
+  - name: AUTO
+    type: url-test
+    use:
+      - ID
+      - SG
+    url: http://www.gstatic.com/generate_204
+    interval: 300
+    tolerance: 50
+  - name: general
+    type: select
+    disable-udp: false
+    proxies:
+      - DIRECT
+      - AUTO
+      - ID
+      - SG
+  - name: AdBlock
+    type: select
+    proxies:
+      - REJECT
+      - DIRECT
+  - name: STREAMING
+    type: select
+    proxies:
+      - DIRECT
+      - general
+      - AUTO
+      - ID
+      - SG
+      - REJECT
+  - name: GAMES
+    type: select
+    disable-udp: false
+    proxies:
+      - DIRECT
+      - general
+      - AUTO
+      - ID
+      - SG
+      - REJECT
+  - name: SPEEDTEST
+    type: select
+    proxies:
+      - DIRECT
+      - general
+      - AUTO
+      - ID
+      - SG
+      - REJECT
+  - name: GLOBAL
+    type: select
+    disable-udp: false
+    proxies:
+      - general
+      - DIRECT
+      - AUTO
+      - ID
+      - SG
+      - REJECT
 rules:
-  - AdBlock,AdBlock
-  - Streaming,STREAMING
-  - Games,GAMES
-  - Speedtest,SPEEDTEST
-  - MATCH,Global
+  - RULE-SET,AdBlock,AdBlock
+  - RULE-SET,Games,GAMES
+  - RULE-SET,Streaming,STREAMING
+  - RULE-SET,Speedtest,SPEEDTEST
+  - MATCH,GLOBAL

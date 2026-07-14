@@ -27,9 +27,12 @@ const (
 )
 
 type RoutingConfig struct {
-	TCP       RoutingMode `yaml:"tcp"`
-	UDP       RoutingMode `yaml:"udp"`
-	TunDevice string      `yaml:"tun_device"`
+	TCP            RoutingMode `yaml:"tcp"`
+	UDP            RoutingMode `yaml:"udp"`
+	TunDevice      string      `yaml:"tun_device"`
+	BypassMACs     []string    `yaml:"bypass_macs"`
+	BypassIPs      []string    `yaml:"bypass_ips"`
+	BypassIP6s     []string    `yaml:"bypass_ip6s"`
 }
 
 type MihomoConfig struct {

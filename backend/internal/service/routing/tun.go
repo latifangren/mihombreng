@@ -358,9 +358,75 @@ func (t *TUNService) createOpenWrtFw4Rules(routingConfig config.RoutingConfig) e
 
 func (t *TUNService) createMarkingRules(routingConfig config.RoutingConfig) error {
 	mangle := t.conn.AddTable(&nftables.Table{
-		Family: nftables.TableFamilyIPv4,
+		Family: nftables.TableFamilyINet,
 		Name:   "mihombreng_tun",
 	})
+
+	logger.Debug("TUN: Creating bypass_mac set")
+	bypassMACSet := &nftables.Set{
+		Table:   mangle,
+		Name:    "bypass_mac",
+		KeyType: nftables.TypeEtherAddr,
+	}
+	if err := t.conn.AddSet(bypassMACSet, nil); err != nil {
+		logger.Errorf("TUN: Failed to add bypass_mac set: %v", err)
+		return err
+	}
+	var bypassMACElements []nftables.SetElement
+	for _, macStr := range routingConfig.BypassMACs {
+		mac, err := net.ParseMAC(macStr)
+		if err != nil {
+			logger.Warnf("TUN: Invalid MAC address %s: %v", macStr, err)
+			continue
+		}
+		bypassMACElements = append(bypassMACElements, nftables.SetElement{Key: mac})
+	}
+	if len(bypassMACElements) > 0 {
+		if err := t.conn.SetAddElements(bypassMACSet, bypassMACElements); err != nil {
+			logger.Errorf("TUN: Failed to add bypass_mac elements: %v", err)
+			return err
+		}
+	}
+
+	bypassIPSet := &nftables.Set{
+		Table:    mangle,
+		Name:     "bypass_ip",
+		KeyType:  nftables.TypeIPAddr,
+		Interval: true,
+	}
+	if err := t.conn.AddSet(bypassIPSet, nil); err != nil {
+		logger.Errorf("TUN: Failed to add bypass_ip set: %v", err)
+		return err
+	}
+	if len(routingConfig.BypassIPs) > 0 {
+		bypassIPElements := buildReservedSetElements(routingConfig.BypassIPs, false)
+		if len(bypassIPElements) > 0 {
+			if err := t.conn.SetAddElements(bypassIPSet, bypassIPElements); err != nil {
+				logger.Errorf("TUN: Failed to add bypass_ip elements: %v", err)
+				return err
+			}
+		}
+	}
+
+	bypassIP6Set := &nftables.Set{
+		Table:    mangle,
+		Name:     "bypass_ip6",
+		KeyType:  nftables.TypeIP6Addr,
+		Interval: true,
+	}
+	if err := t.conn.AddSet(bypassIP6Set, nil); err != nil {
+		logger.Errorf("TUN: Failed to add bypass_ip6 set: %v", err)
+		return err
+	}
+	if len(routingConfig.BypassIP6s) > 0 {
+		bypassIP6Elements := buildReservedSetElements(routingConfig.BypassIP6s, true)
+		if len(bypassIP6Elements) > 0 {
+			if err := t.conn.SetAddElements(bypassIP6Set, bypassIP6Elements); err != nil {
+				logger.Errorf("TUN: Failed to add bypass_ip6 elements: %v", err)
+				return err
+			}
+		}
+	}
 
 	prerouting := t.conn.AddChain(&nftables.Chain{
 		Name:     "prerouting",
@@ -368,6 +434,47 @@ func (t *TUNService) createMarkingRules(routingConfig config.RoutingConfig) erro
 		Type:     nftables.ChainTypeFilter,
 		Hooknum:  nftables.ChainHookPrerouting,
 		Priority: nftables.ChainPriorityMangle,
+	})
+
+	// Add bypass checks at the beginning of prerouting
+	// 1. MAC match -> VerdictAccept
+	t.conn.AddRule(&nftables.Rule{
+		Table: mangle,
+		Chain: prerouting,
+		Exprs: []expr.Any{
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseLLHeader, Offset: 6, Len: 6},
+			&expr.Lookup{SourceRegister: 1, SetName: bypassMACSet.Name, SetID: bypassMACSet.ID},
+			&expr.Counter{},
+			&expr.Verdict{Kind: expr.VerdictAccept},
+		},
+	})
+
+	// 2. IPv4 match -> VerdictAccept
+	t.conn.AddRule(&nftables.Rule{
+		Table: mangle,
+		Chain: prerouting,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{byte(unix.NFPROTO_IPV4)}},
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 12, Len: 4},
+			&expr.Lookup{SourceRegister: 1, SetName: bypassIPSet.Name, SetID: bypassIPSet.ID},
+			&expr.Counter{},
+			&expr.Verdict{Kind: expr.VerdictAccept},
+		},
+	})
+
+	// 3. IPv6 match -> VerdictAccept
+	t.conn.AddRule(&nftables.Rule{
+		Table: mangle,
+		Chain: prerouting,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{byte(unix.NFPROTO_IPV6)}},
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 8, Len: 16},
+			&expr.Lookup{SourceRegister: 1, SetName: bypassIP6Set.Name, SetID: bypassIP6Set.ID},
+			&expr.Counter{},
+			&expr.Verdict{Kind: expr.VerdictAccept},
+		},
 	})
 
 	t.conn.AddRule(&nftables.Rule{
@@ -411,6 +518,8 @@ func (t *TUNService) createMarkingRules(routingConfig config.RoutingConfig) erro
 			Table: mangle,
 			Chain: prerouting,
 			Exprs: []expr.Any{
+				&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+				&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{byte(unix.NFPROTO_IPV4)}},
 				&expr.Payload{
 					DestRegister: 1,
 					Base:         expr.PayloadBaseNetworkHeader,
@@ -476,6 +585,35 @@ func (t *TUNService) createMarkingRules(routingConfig config.RoutingConfig) erro
 		Priority: nftables.ChainPriorityMangle,
 	})
 
+	// Add bypass checks at the beginning of output
+	// 1. IPv4 match -> VerdictAccept
+	t.conn.AddRule(&nftables.Rule{
+		Table: mangle,
+		Chain: output,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{byte(unix.NFPROTO_IPV4)}},
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 12, Len: 4},
+			&expr.Lookup{SourceRegister: 1, SetName: bypassIPSet.Name, SetID: bypassIPSet.ID},
+			&expr.Counter{},
+			&expr.Verdict{Kind: expr.VerdictAccept},
+		},
+	})
+
+	// 2. IPv6 match -> VerdictAccept
+	t.conn.AddRule(&nftables.Rule{
+		Table: mangle,
+		Chain: output,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{byte(unix.NFPROTO_IPV6)}},
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 8, Len: 16},
+			&expr.Lookup{SourceRegister: 1, SetName: bypassIP6Set.Name, SetID: bypassIP6Set.ID},
+			&expr.Counter{},
+			&expr.Verdict{Kind: expr.VerdictAccept},
+		},
+	})
+
 	t.conn.AddRule(&nftables.Rule{
 		Table: mangle,
 		Chain: output,
@@ -507,6 +645,8 @@ func (t *TUNService) createMarkingRules(routingConfig config.RoutingConfig) erro
 			Table: mangle,
 			Chain: output,
 			Exprs: []expr.Any{
+				&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+				&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{byte(unix.NFPROTO_IPV4)}},
 				&expr.Payload{
 					DestRegister: 1,
 					Base:         expr.PayloadBaseNetworkHeader,
@@ -578,7 +718,7 @@ func (t *TUNService) deleteRules() error {
 
 	nft.DelTable(&nftables.Table{
 		Name:   "mihombreng_tun",
-		Family: nftables.TableFamilyIPv4,
+		Family: nftables.TableFamilyINet,
 	})
 
 	if t.useOpenWrtFw {

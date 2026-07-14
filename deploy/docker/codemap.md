@@ -26,7 +26,7 @@ docker-compose.yml / docker-compose.dev.yml
         │     └── backend/ + /build/web/dist/ -> go build -> /build/mihombreng
         ├── Stage 3: alpine:latest (downloader)
         │     ├── Mihomo binary (arch-dispatched: amd64/arm64/armv7)
-        │     ├── Geo assets (mmdb, dat, metadb) from rtaserver/meta-rules-dat
+        │     ├── Geo assets (mmdb, dat, metadb) from MetaCubeX/meta-rules-dat
         │     └── UI dashboards (zashboard, metacubexd, yacd)
         └── Stage 4: alpine:latest (runtime)
               ├── /usr/share/mihombreng/mihombreng (app binary)

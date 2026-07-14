@@ -7,7 +7,7 @@ CI/CD workflow for automated OpenWrt package building.
 GitHub Actions builds OpenWrt packages in two modes:
 
 - **Smoke build** for fast feedback on `dev` and pull requests
-- **Full build** for complete package validation on `master` and manual runs
+- **Full build** for complete package validation on `main` and manual runs
 
 This split keeps daily development faster while preserving full multi-arch validation before release.
 
@@ -18,8 +18,8 @@ This split keeps daily development faster while preserving full multi-arch valid
 | Trigger | Condition | Purpose |
 |---------|-----------|---------|
 | `workflow_dispatch` | Manual | Run full matrix on demand |
-| `push` | Branches: `dev`, `master`; paths: `deploy/openwrt/**`, `scripts/build-openwrt.sh`, `backend/**`, `web/**`, `defaults/**` | Build on packaging or app changes |
-| `pull_request` | Base branches: `dev`, `master`; same paths as push | Validate PR changes with smoke build |
+| `push` | Branches: `dev`, `main`; paths: `deploy/openwrt/**`, `scripts/build-openwrt.sh`, `backend/**`, `web/**`, `defaults/**` | Build on packaging or app changes |
+| `pull_request` | Base branches: `dev`, `main`; same paths as push | Validate PR changes with smoke build |
 
 ## Job Split
 
@@ -28,7 +28,7 @@ This split keeps daily development faster while preserving full multi-arch valid
 Runs when:
 
 - push to `dev`
-- pull request targeting `dev` or `master`
+- pull request targeting `dev` or `main`
 
 Target:
 
@@ -55,7 +55,7 @@ This keeps dev CI faster while still proving package logic works.
 
 Runs when:
 
-- push to `master`
+- push to `main`
 - manual `workflow_dispatch`
 
 Targets:
@@ -82,7 +82,7 @@ name: Build OpenWrt Packages
 on:
   workflow_dispatch:
   push:
-    branches: [dev, master]
+    branches: [dev, main]
     paths:
       - 'deploy/openwrt/**'
       - 'scripts/build-openwrt.sh'
@@ -90,7 +90,7 @@ on:
       - 'web/**'
       - 'defaults/**'
   pull_request:
-    branches: [dev, master]
+    branches: [dev, main]
     paths:
       - 'deploy/openwrt/**'
       - 'scripts/build-openwrt.sh'
@@ -107,7 +107,7 @@ jobs:
         branch: [openwrt-24.10]
 
   full_build:
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     strategy:
       matrix:
         arch: [x86_64, aarch64_generic, arm_cortex-a7, mips_24kc]

@@ -3,7 +3,7 @@ name: Build OpenWrt Packages
 on:
   workflow_dispatch:
   push:
-    branches: [dev, master]
+    branches: [dev, main]
     paths:
       - 'deploy/openwrt/**'
       - 'scripts/build-openwrt.sh'
@@ -11,7 +11,7 @@ on:
       - 'web/**'
       - 'defaults/**'
   pull_request:
-    branches: [dev, master]
+    branches: [dev, main]
     paths:
       - 'deploy/openwrt/**'
       - 'scripts/build-openwrt.sh'
@@ -80,8 +80,10 @@ jobs:
 
   full_build:
     name: full build (${{ matrix.arch }}, ${{ matrix.branch }})
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/master'
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -143,3 +145,17 @@ jobs:
           name: openwrt-full-${{ matrix.arch }}-${{ matrix.branch }}
           path: output/
           retention-days: 30
+
+      - name: Extract Version
+        id: get_version
+        run: |
+          VERSION=$(grep -m 1 '^version:' defaults/mihombreng.yaml | awk '{print $2}' | tr -d '"')
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          files: output/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

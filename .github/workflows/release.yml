@@ -100,12 +100,73 @@ jobs:
           cp build/*.deb release-dist/ || true
           cp build/*.pkg.tar.zst release-dist/ || true
 
+      - name: Prepare Release Notes
+        if: steps.check_release.outputs.EXISTS == 'false'
+        id: release_notes
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          
+          # Find start line of the current version section in CHANGELOG.md
+          START_LINE=$(grep -n "^## \[$VERSION\]" CHANGELOG.md | cut -d: -f1)
+          
+          if [ -n "$START_LINE" ]; then
+            # Find the next version header line after START_LINE
+            NEXT_HEADER_RELATIVE=$(tail -n +$((START_LINE + 1)) CHANGELOG.md | grep -n "^## \[" | head -n 1 | cut -d: -f1)
+            
+            if [ -n "$NEXT_HEADER_RELATIVE" ]; then
+              END_LINE=$((START_LINE + NEXT_HEADER_RELATIVE - 1))
+              # Extract lines between start and end of this version's changelog section
+              sed -n "${START_LINE},${END_LINE}p" CHANGELOG.md > parsed_notes.md
+            else
+              # Extract from START_LINE to end of file if no older versions exist
+              sed -n "${START_LINE},\$p" CHANGELOG.md > parsed_notes.md
+            fi
+            
+            # Remove the version title line (first line)
+            sed -i '1d' parsed_notes.md
+            # Clean up leading empty lines
+            sed -i '/./,$!d' parsed_notes.md
+          else
+            echo "No specific changelog entries found for version $VERSION." > parsed_notes.md
+          fi
+          
+          cat << 'EOF' > release_body.md
+          ## 📦 Package Distribution Details
+
+          Get pre-built application packages and components for your platform:
+
+          ### 🌐 OpenWrt Router
+          * **OpenWrt 24.10 (`.ipk`)**: `mihombreng_<version>_<arch>.ipk`
+          * **OpenWrt 25.12 (`.apk`)**: `mihombreng-<version>-<arch>.apk`
+          * **Web UI (LuCI Companion)**: `luci-app-mihombreng_<version>_all.ipk` / `luci-app-mihombreng-<version>-all.apk` (Installs UI side panel inside the OpenWrt LuCI administration dashboard interface)
+
+          ### 🐧 Linux Systems
+          * **Debian / Ubuntu (`.deb`)**: `mihombreng_<version>-1_<arch>.deb`
+          * **Arch Linux (`.pkg.tar.zst`)**: `mihombreng-<version>-1-<arch>.pkg.tar.zst`
+          * **Standalone Core**: Direct standalone Go compiled binary executable files (`mihombreng-linux-<arch>`)
+
+          ---
+
+          ## 🚀 Changelog
+          
+          EOF
+          
+          cat parsed_notes.md >> release_body.md
+          
+          # Output to GHA step outputs for release body
+          {
+            echo "body<<EOF"
+            cat release_body.md
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release and Push Tag
         if: steps.check_release.outputs.EXISTS == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.get_version.outputs.VERSION }}
           name: Release v${{ steps.get_version.outputs.VERSION }}
+          body: ${{ steps.release_notes.outputs.body }}
           files: release-dist/*
           draft: false
           prerelease: false

@@ -49,6 +49,26 @@ function formatLineCount(content?: string) {
   return content.split("\n").length;
 }
 
+function isMarkdownFile(name?: string | null) {
+  return Boolean(name?.toLowerCase().endsWith(".md"));
+}
+
+function fileIndicatorClass(name: string, type: FileTab["type"], dirty: boolean, result?: ConfigValidationResult) {
+  if (dirty) return "bg-warning";
+  if (!isMarkdownFile(name) && type === "config" && result && !result.valid) return "bg-danger";
+  if (isMarkdownFile(name)) return "bg-info";
+  if (type === "config" && result?.valid) return "bg-primary";
+  return "bg-text-muted/50";
+}
+
+function fileAccentClass(name: string, type: FileTab["type"], dirty: boolean, result?: ConfigValidationResult) {
+  if (dirty) return "border-t-warning bg-warning/10";
+  if (!isMarkdownFile(name) && type === "config" && result && !result.valid) return "border-t-danger bg-danger/10";
+  if (isMarkdownFile(name)) return "border-t-info bg-info/10";
+  if (type === "config" && result?.valid) return "border-t-primary bg-primary/10";
+  return "border-t-text-muted/30 bg-background";
+}
+
 function Modal({
   open,
   title,
@@ -573,22 +593,28 @@ export default function ConfigEditorPage() {
   }
 
   const renderFileButton = (name: string, type: FileTab["type"]) => {
-    const isOpen = tabs.some((tab) => tab.name === name);
-    const isDirty = tabs.some((tab) => tab.name === name && tab.dirty);
+    const openTab = tabs.find((tab) => tab.name === name);
+    const isActive = activeTab === name;
+    const isActiveConfig = activeConfig === name && !isMarkdownFile(name);
+    const isDirty = Boolean(openTab?.dirty);
+    const dotClass = fileIndicatorClass(name, openTab?.type ?? type, isDirty, validation[name]);
+
     return (
       <button
         type="button"
         key={name}
         onClick={() => void openFile(name, type)}
         className={cn(
-          "flex w-full items-center gap-2 truncate rounded-[6px] px-2 py-1.5 text-left font-mono text-xs transition-colors",
-          activeTab === name
-            ? "bg-surface text-text"
-            : "text-text-muted hover:bg-surface/50 hover:text-text"
+          "relative flex w-full items-center gap-2 truncate rounded-[6px] border border-transparent px-2 py-1.5 text-left font-mono text-xs transition-colors",
+          isActive
+            ? "border-black bg-surface text-text shadow-[2px_2px_0_#000]"
+            : "text-text-muted hover:border-black/50 hover:bg-surface/50 hover:text-text",
+          isActiveConfig && "border-primary/70 bg-primary/10"
         )}
       >
-        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", isDirty ? "bg-warning" : isOpen ? (name.endsWith(".md") ? "bg-primary" : "bg-info") : "bg-text-muted/50")} />
+        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/40", dotClass)} />
         <span className="truncate">{name}</span>
+        {isActiveConfig && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-primary" title="Active config" />}
       </button>
     );
   };
@@ -695,19 +721,17 @@ export default function ConfigEditorPage() {
                 ) : (
                   <div className="space-y-0.5">
                     {configs.map((name) => {
-                      const isMd = name;
+                      const isDoc = isMarkdownFile(name);
                       return (
-                        <div key={name} className="group flex items-center">
+                        <div key={name} className="group flex items-center gap-1">
                           <div className="min-w-0 flex-1">{renderFileButton(name, "config")}</div>
-                          {!isMd.endsWith(".md") && (
+                          {!isDoc && (
                             <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                              {activeConfig === name ? (
-                                <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" title="Active config" />
-                              ) : (
+                              {activeConfig !== name && (
                                 <button
                                   type="button"
                                   onClick={() => void handleSetActive(name)}
-                                  className="rounded px-1 py-0.5 font-mono text-[9px] text-text-muted hover:text-text"
+                                  className="rounded border border-transparent px-1 py-0.5 font-mono text-[9px] text-text-muted hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                                   title="Set as active"
                                 >
                                   Live
@@ -716,7 +740,7 @@ export default function ConfigEditorPage() {
                               <button
                                 type="button"
                                 onClick={() => setDeleteTarget(name)}
-                                className="rounded px-1 py-0.5 font-mono text-[9px] text-danger hover:text-danger/80"
+                                className="rounded border border-transparent px-1 py-0.5 font-mono text-[9px] text-danger hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
                                 title="Delete config"
                               >
                                 Del
@@ -781,34 +805,40 @@ export default function ConfigEditorPage() {
             <>
               {/* Tabs bar */}
               <div className="flex items-center gap-0.5 overflow-x-auto rounded-t-[10px] border-2 border-black bg-surface">
-                {tabs.map((tab) => (
-                  <div
-                    key={tab.name}
-                    className={cn(
-                      "group flex items-center border-r-2 border-black font-mono text-xs transition-colors",
-                      activeTab === tab.name
-                        ? "bg-background text-text"
-                        : "bg-surface text-text-muted hover:bg-background/50"
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab(tab.name)}
-                      className="flex items-center gap-1.5 px-3 py-2"
+                {tabs.map((tab) => {
+                  const dotClass = fileIndicatorClass(tab.name, tab.type, tab.dirty, validation[tab.name]);
+                  const activeAccentClass = fileAccentClass(tab.name, tab.type, tab.dirty, validation[tab.name]);
+                  const isActive = activeTab === tab.name;
+
+                  return (
+                    <div
+                      key={tab.name}
+                      className={cn(
+                        "group flex items-center border-r-2 border-t-4 border-black font-mono text-xs transition-colors",
+                        isActive
+                          ? cn("text-text shadow-[inset_0_-2px_0_#000]", activeAccentClass)
+                          : "border-t-transparent bg-surface text-text-muted hover:bg-background/50 hover:text-text"
+                      )}
                     >
-                      {tab.dirty && <span className="h-2 w-2 rounded-full bg-warning" title="Unsaved changes" />}
-                      <span className="max-w-32 truncate">{tab.name}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => closeTab(tab.name, e)}
-                      className="mr-2 rounded px-1 text-[10px] opacity-0 group-hover:opacity-100 hover:bg-danger hover:text-white"
-                      aria-label={`Close ${tab.name}`}
-                    >
-                      x
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab(tab.name)}
+                        className="flex items-center gap-1.5 px-3 py-2"
+                      >
+                        <span className={cn("h-2 w-2 rounded-full ring-1 ring-black/50", dotClass)} title={tab.dirty ? "Unsaved changes" : undefined} />
+                        <span className="max-w-32 truncate">{tab.name}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => closeTab(tab.name, e)}
+                        className="mr-2 rounded px-1 text-[10px] opacity-0 transition-colors group-hover:opacity-100 hover:bg-danger hover:text-white"
+                        aria-label={`Close ${tab.name}`}
+                      >
+                        x
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Toolbar */}

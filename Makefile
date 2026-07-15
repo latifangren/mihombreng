@@ -246,6 +246,13 @@ define build_deb
 	echo "fi" >> $(PKG_DIR)/DEBIAN/prerm
 	chmod 755 $(PKG_DIR)/DEBIAN/prerm
 
+	# conffiles
+	echo "/etc/mihombreng/mihombreng.yaml" > $(PKG_DIR)/DEBIAN/conffiles
+	echo "/etc/mihombreng/configs/config.yaml" >> $(PKG_DIR)/DEBIAN/conffiles
+	echo "/etc/mihombreng/proxy_providers/id.yaml" >> $(PKG_DIR)/DEBIAN/conffiles
+	echo "/etc/mihombreng/proxy_providers/sg.yaml" >> $(PKG_DIR)/DEBIAN/conffiles
+	echo "/etc/mihombreng/rule_providers/general.yaml" >> $(PKG_DIR)/DEBIAN/conffiles
+
 	dpkg-deb --build $(PKG_DIR)
 	@echo "Package: $(PKG_DIR).deb"
 endef

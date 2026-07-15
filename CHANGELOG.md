@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.4] - 2026-07-15
+
+### Added
+- **Multi-Architecture Release Pipeline**: Redesigned CI/CD workflow to support extensive OpenWrt compilation matrix (Cortex A53, A72, MIPS, x86 targets) and Linux architectures.
+- **Auto Checksums Generation**: Automatically generates a `SHA256SUMS` file tracking every package build inside the release payload.
+- **Update Check Service**: Added `/app/check-update` endpoint in backend linked with a safety warning banner on Dashboard and Settings, reminding of manual backup checks.
+- **Conffiles Configuration Guard**: Configured package manifests for OpenWrt, Debian, and Arch systems to protect critical configuration yaml files from being overwritten during firmware upgrades.
+
+### Changed
+- **Unified Release Pipeline**: Consolidated GHA jobs into a single pipeline inside `release.yml`, reducing duplicate runs.
+- **Artifact Naming Standards**: Standardized artifact outputs across Android (.apk wrapper), Linux binaries, OpenWrt packages (.ipk/.apk), LuCI, and Debian/Ubuntu packages.
+
 ## [1.2.3] - 2026-07-15
 
 ### Added

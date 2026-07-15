@@ -12,11 +12,15 @@ on:
         required: false
         default: 'false'
 
+permissions:
+  contents: write
+
 jobs:
-  check-and-release:
+  check-version:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      version: ${{ steps.get_version.outputs.VERSION }}
+      exists: ${{ steps.check_release.outputs.EXISTS }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -49,8 +53,15 @@ jobs:
             fi
           fi
 
+  build-core:
+    needs: check-version
+    if: needs.check-version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
       - name: Set up Go
-        if: steps.check_release.outputs.EXISTS == 'false'
         uses: actions/setup-go@v5
         with:
           go-version: '1.24'
@@ -58,7 +69,6 @@ jobs:
           cache-dependency-path: backend/go.sum
 
       - name: Set up Node.js
-        if: steps.check_release.outputs.EXISTS == 'false'
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -66,65 +76,190 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install System Dependencies
-        if: steps.check_release.outputs.EXISTS == 'false'
         run: |
           sudo apt-get update
           sudo apt-get install -y wget curl unzip tar zstd sed
 
       - name: Install Swag CLI
-        if: steps.check_release.outputs.EXISTS == 'false'
         run: |
           go install github.com/swaggo/swag/cmd/swag@latest
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
       - name: Download GeoIP & DB Assets
-        if: steps.check_release.outputs.EXISTS == 'false'
         run: |
           make download-assets
 
       - name: Build Multi-Arch Binaries
-        if: steps.check_release.outputs.EXISTS == 'false'
         run: |
           make build-core
 
       - name: Build Packages (Deb & Arch)
-        if: steps.check_release.outputs.EXISTS == 'false'
         run: |
           make all
 
-      - name: Prepare Release Artifacts
-        if: steps.check_release.outputs.EXISTS == 'false'
+      - name: Prepare Core Artifacts
         run: |
-          mkdir -p release-dist
-          cp backend/bin/* release-dist/
-          cp build/*.deb release-dist/ || true
-          cp build/*.pkg.tar.zst release-dist/ || true
+          mkdir -p dist
+          VERSION="${{ needs.check-version.outputs.version }}"
+          # 1. Rename and copy standalone binaries
+          cp backend/bin/mihombreng-linux-amd64 dist/mihombreng-${VERSION}-linux-amd64
+          cp backend/bin/mihombreng-linux-arm64 dist/mihombreng-${VERSION}-linux-arm64
+          cp backend/bin/mihombreng-linux-386 dist/mihombreng-${VERSION}-linux-386
+          cp backend/bin/mihombreng-linux-armv5 dist/mihombreng-${VERSION}-linux-armv5
+          cp backend/bin/mihombreng-linux-armv6 dist/mihombreng-${VERSION}-linux-armv6
+          cp backend/bin/mihombreng-linux-armv7 dist/mihombreng-${VERSION}-linux-armv7
+          cp backend/bin/mihombreng-linux-mips dist/mihombreng-${VERSION}-linux-mips
+          cp backend/bin/mihombreng-linux-mipsle dist/mihombreng-${VERSION}-linux-mipsle
+          cp backend/bin/mihombreng-linux-mips64 dist/mihombreng-${VERSION}-linux-mips64
+          cp backend/bin/mihombreng-linux-mips64le dist/mihombreng-${VERSION}-linux-mips64le
+          cp backend/bin/mihombreng-linux-riscv64 dist/mihombreng-${VERSION}-linux-riscv64
+          cp backend/bin/mihombreng-linux-ppc64 dist/mihombreng-${VERSION}-linux-ppc64
+          cp backend/bin/mihombreng-linux-ppc64le dist/mihombreng-${VERSION}-linux-ppc64le
+          cp backend/bin/mihombreng-linux-s390x dist/mihombreng-${VERSION}-linux-s390x
+          # 2. Android binary packaged as .apk
+          cp backend/bin/mihombreng-android-arm64 dist/mihombreng-${VERSION}-android-arm64.apk
+          # 3. Rename and copy Debian packages
+          for f in build/*.deb; do
+            if [ -f "$f" ]; then
+              base=$(basename "$f")
+              new_name=$(echo "$base" | sed -E "s/_[0-9]+\.[0-9]+\.[0-9]+-[0-9]+_/_${VERSION}_/")
+              cp "$f" "dist/$new_name"
+            fi
+          done
+          # 4. Copy Arch Linux packages (keeping existing name)
+          cp build/*.pkg.tar.zst dist/ || true
+
+      - name: Upload Core Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-artifacts
+          path: dist/*
+          retention-days: 1
+
+  build-openwrt:
+    needs: [check-version]
+    if: needs.check-version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64_generic, aarch64_cortex-a53, aarch64_cortex-a72, arm_cortex-a7, arm_cortex-a9, arm_cortex-a15_neon-vfpv4, mips_24kc, mipsel_74kc, i386_pentium-mmx]
+        branch: [openwrt-24.10, openwrt-25.12]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: backend/go.sum
+
+      - name: Setup Feed Structure
+        run: |
+          mkdir -p mihombreng luci-app-mihombreng
+          cp -f deploy/openwrt/mihombreng/Makefile mihombreng/
+          cp -rf defaults/* mihombreng/
+          cp -f deploy/openwrt/luci-app-mihombreng/Makefile luci-app-mihombreng/
+          cp -rf deploy/openwrt/luci-app-mihombreng/root luci-app-mihombreng/
+
+      - name: Build Packages
+        uses: openwrt/gh-action-sdk@v11
+        env:
+          ARCH: ${{ matrix.arch }}-${{ matrix.branch }}
+          FEEDNAME: mihombreng
+          PACKAGES: mihombreng luci-app-mihombreng
+          NO_SHFMT_CHECK: 1
+          KEY_BUILD: ${{ secrets.SIGNING_KEY_SEC }}
+          BUILD_LOG: 1
+          V: ${{ matrix.branch == 'openwrt-25.12' && 's' || '' }}
+          MAKEFLAGS: ${{ matrix.branch == 'openwrt-25.12' && '-j1' || '' }}
+
+      - name: Organize & Standardize Artifacts
+        run: |
+          mkdir -p output
+          VERSION="${{ needs.check-version.outputs.version }}"
+          if [[ "${{ matrix.branch }}" == "openwrt-24.10" ]]; then
+            for f in $(find bin/packages -name "mihombreng_*.ipk"); do
+              filename=$(basename "$f")
+              arch=$(echo "$filename" | awk -F'_' '{print $3}' | sed 's/\.ipk//')
+              cp "$f" "output/mihombreng-${VERSION}-${arch}.ipk"
+            done
+            for f in $(find bin/packages -name "luci-app-mihombreng_*.ipk"); do
+              cp "$f" "output/luci-app-mihombreng-${VERSION}_all.ipk"
+            done
+          else
+            # 25.12 uses apk packages
+            for f in $(find bin/packages -name "mihombreng-*.apk" ! -name "luci-app-*"); do
+              filename=$(basename "$f")
+              arch=$(echo "$filename" | sed -E "s/mihombreng-.*_([^.]+)\.apk/\1/")
+              cp "$f" "output/mihombreng-${VERSION}-${arch}.apk"
+            done
+            for f in $(find bin/packages -name "luci-app-mihombreng-*.apk"); do
+              cp "$f" "output/luci-app-mihombreng-${VERSION}-all.apk"
+            done
+          fi
+
+      - name: Upload OpenWrt Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: openwrt-artifacts-${{ matrix.arch }}-${{ matrix.branch }}
+          path: output/*
+          retention-days: 1
+
+  publish-release:
+    needs: [check-version, build-core, build-openwrt]
+    if: needs.check-version.outputs.exists == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Prepare Workspace
+        run: mkdir -p release-dist
+
+      - name: Download Core Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: core-artifacts
+          path: release-dist
+
+      - name: Download OpenWrt Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: openwrt-artifacts-*
+          path: release-dist
+          merge-multiple: true
+
+      - name: Generate Checksums
+        run: |
+          cd release-dist
+          rm -f SHA256SUMS checksums.txt
+          sha256sum * > SHA256SUMS
+          echo "SHA256SUMS generated successfully:"
+          cat SHA256SUMS
 
       - name: Prepare Release Notes
-        if: steps.check_release.outputs.EXISTS == 'false'
         id: release_notes
         run: |
-          VERSION="${{ steps.get_version.outputs.VERSION }}"
-          
-          # Find start line of the current version section in CHANGELOG.md
+          VERSION="${{ needs.check-version.outputs.version }}"
           START_LINE=$(grep -n "^## \[$VERSION\]" CHANGELOG.md | cut -d: -f1)
-          
           if [ -n "$START_LINE" ]; then
-            # Find the next version header line after START_LINE
             NEXT_HEADER_RELATIVE=$(tail -n +$((START_LINE + 1)) CHANGELOG.md | grep -n "^## \[" | head -n 1 | cut -d: -f1)
-            
             if [ -n "$NEXT_HEADER_RELATIVE" ]; then
               END_LINE=$((START_LINE + NEXT_HEADER_RELATIVE - 1))
-              # Extract lines between start and end of this version's changelog section
               sed -n "${START_LINE},${END_LINE}p" CHANGELOG.md > parsed_notes.md
             else
-              # Extract from START_LINE to end of file if no older versions exist
               sed -n "${START_LINE},\$p" CHANGELOG.md > parsed_notes.md
             fi
-            
-            # Remove the version title line (first line)
             sed -i '1d' parsed_notes.md
-            # Clean up leading empty lines
             sed -i '/./,$!d' parsed_notes.md
           else
             echo "No specific changelog entries found for version $VERSION." > parsed_notes.md
@@ -136,14 +271,17 @@ jobs:
           Get pre-built application packages and components for your platform:
 
           ### 🌐 OpenWrt Router
-          * **OpenWrt 24.10 (`.ipk`)**: `mihombreng_<version>_<arch>.ipk`
+          * **OpenWrt 24.10 (`.ipk`)**: `mihombreng-<version>-<arch>.ipk`
           * **OpenWrt 25.12 (`.apk`)**: `mihombreng-<version>-<arch>.apk`
-          * **Web UI (LuCI Companion)**: `luci-app-mihombreng_<version>_all.ipk` / `luci-app-mihombreng-<version>-all.apk` (Installs UI side panel inside the OpenWrt LuCI administration dashboard interface)
+          * **Web UI (LuCI Companion)**: `luci-app-mihombreng-<version>_all.ipk` / `luci-app-mihombreng-<version>-all.apk` (UI side panel)
 
           ### 🐧 Linux Systems
-          * **Debian / Ubuntu (`.deb`)**: `mihombreng_<version>-1_<arch>.deb`
+          * **Debian / Ubuntu (`.deb`)**: `mihombreng_<version>_amd64.deb`
           * **Arch Linux (`.pkg.tar.zst`)**: `mihombreng-<version>-1-<arch>.pkg.tar.zst`
-          * **Standalone Core**: Direct standalone Go compiled binary executable files (`mihombreng-linux-<arch>`)
+          * **Standalone Core**: Direct standalone Go compiled binary executable files (`mihombreng-<version>-linux-<arch>`)
+
+          ### 📱 Android
+          * **Standalone Binary (`.apk`)**: Command-line wrapper executable (`mihombreng-<version>-android-arm64.apk`)
 
           ---
 
@@ -152,22 +290,20 @@ jobs:
           EOF
           
           cat parsed_notes.md >> release_body.md
-          
-          # Output to GHA step outputs for release body
           {
             echo "body<<EOF"
             cat release_body.md
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub Release and Push Tag
-        if: steps.check_release.outputs.EXISTS == 'false'
+      - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.get_version.outputs.VERSION }}
-          name: Release v${{ steps.get_version.outputs.VERSION }}
+          tag_name: v${{ needs.check-version.outputs.version }}
+          name: Release v${{ needs.check-version.outputs.version }}
           body: ${{ steps.release_notes.outputs.body }}
-          files: release-dist/*
+          files: |
+            release-dist/*
           draft: false
           prerelease: false
         env:

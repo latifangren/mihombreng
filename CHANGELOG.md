@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-07-15
+
+### Added
+- **Read-Only Markdown Files Support**: Implemented read-only rendering mode for Markdown (`.md`) documentation files in the Config Editor and File Manager to prevent users from breaking system documents. This adds special badges, skips Monaco text editor edits, and locks action gates.
+
+### Changed
+- **Official GeoIP/Geosite Repositories**: Replaced outdated `rtaserver/meta-rules-dat` download URLs with the official `MetaCubeX/meta-rules-dat` repository across Makefiles and Docker configurations.
+- **Unified Config Template**: Consolidated three redundant default config files in package bundles into a single, clean `config.yaml` using optimal Fake-IP, TUN, and Sniffer rules from the official metadata.
+
+### Fixed
+- **Backend Documentation Access**: Updated backend file handlers to allow reading and downloading `.md` files without throwing YAML extension enforcement errors.
+
 ## [1.2.2] - 2026-07-14
 
 ### Fixed

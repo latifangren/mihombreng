@@ -42,10 +42,10 @@ RUN case ${TARGETARCH} in \
     gunzip mihomo.gz && \
     chmod +x mihomo
 
-RUN wget -q -O country.mmdb "https://github.com/rtaserver/meta-rules-dat/releases/latest/download/country.mmdb" && \
-    wget -q -O geoip.dat "https://github.com/rtaserver/meta-rules-dat/releases/latest/download/geoip.dat" && \
-    wget -q -O geosite.dat "https://github.com/rtaserver/meta-rules-dat/releases/latest/download/geosite.dat" && \
-    wget -q -O geoip.metadb "https://github.com/rtaserver/meta-rules-dat/releases/download/latest/geoip.metadb"
+RUN wget -q -O country.mmdb "https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/country.mmdb" && \
+    wget -q -O geoip.dat "https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/geoip.dat" && \
+    wget -q -O geosite.dat "https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/geosite.dat" && \
+    wget -q -O geoip.metadb "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb"
 
 RUN mkdir -p ui/zashboard ui/metacubexd ui/yacd
 

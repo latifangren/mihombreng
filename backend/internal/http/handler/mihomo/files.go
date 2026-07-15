@@ -45,6 +45,11 @@ func isYAMLFile(name string) bool {
 	return ext == ".yaml" || ext == ".yml"
 }
 
+func isSupportedReadFile(name string) bool {
+	ext := filepath.Ext(name)
+	return ext == ".yaml" || ext == ".yml" || ext == ".md"
+}
+
 var (
 	lineColRegex = regexp.MustCompile(`(?i)(?:line|Line)\s+(\d+)(?:,\s+column\s+(\d+))?`)
 )
@@ -150,8 +155,8 @@ func (h *MihomoFilesHandler) GetFileContent(c *gin.Context) {
 		return
 	}
 
-	if !isYAMLFile(filename) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "only yaml files are allowed"})
+	if !isSupportedReadFile(filename) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "only yaml and md files are allowed"})
 		return
 	}
 
@@ -569,8 +574,8 @@ func (h *MihomoFilesHandler) DownloadFile(c *gin.Context) {
 		return
 	}
 
-	if !isYAMLFile(filename) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "only yaml files are allowed"})
+	if !isSupportedReadFile(filename) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "only yaml and md files are allowed"})
 		return
 	}
 

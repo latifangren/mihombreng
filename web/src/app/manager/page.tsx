@@ -7,6 +7,7 @@ import { RetroBtn } from "@/components/ui/retro-btn";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonFileItem } from "@/components/ui/skeleton";
 import { mihomoApi } from "@/services/api";
+import { cn } from "@/utils/cn";
 import {
   FileText,
   Trash2,
@@ -28,12 +29,35 @@ type FileSection = {
   label: string;
   badgeVariant: "info" | "warning" | "success";
   badgeLabel: string;
+  toneClass: string;
+  iconClass: string;
 };
 
 const SECTIONS: FileSection[] = [
-  { dir: "configs", label: "Config Files", badgeVariant: "info", badgeLabel: "config" },
-  { dir: "proxy-provider", label: "Proxy Providers", badgeVariant: "warning", badgeLabel: "provider" },
-  { dir: "rule-provider", label: "Rule Providers", badgeVariant: "success", badgeLabel: "rules" },
+  {
+    dir: "configs",
+    label: "Config Files",
+    badgeVariant: "info",
+    badgeLabel: "config",
+    toneClass: "border-info/50 bg-info/5",
+    iconClass: "text-info",
+  },
+  {
+    dir: "proxy-provider",
+    label: "Proxy Providers",
+    badgeVariant: "warning",
+    badgeLabel: "provider",
+    toneClass: "border-warning/50 bg-warning/5",
+    iconClass: "text-warning",
+  },
+  {
+    dir: "rule-provider",
+    label: "Rule Providers",
+    badgeVariant: "success",
+    badgeLabel: "rules",
+    toneClass: "border-primary/50 bg-primary/5",
+    iconClass: "text-primary",
+  },
 ];
 
 // ── API helpers per section ──
@@ -167,20 +191,45 @@ function FileItem({
   onDownload: () => void;
   onDelete: () => void;
 }) {
+  const isMd = name.toLowerCase().endsWith(".md");
+  const effectiveBadgeVariant = isMd ? "info" : badgeVariant;
+  const effectiveBadgeLabel = isMd ? "doc" : badgeLabel;
+  const rowToneClass = isMd
+    ? "border-info/50 bg-info/5"
+    : badgeVariant === "warning"
+      ? "border-warning/40 bg-warning/5"
+      : badgeVariant === "success"
+        ? "border-primary/40 bg-primary/5"
+        : "border-info/40 bg-info/5";
+  const dotClass = isMd
+    ? "bg-info"
+    : badgeVariant === "warning"
+      ? "bg-warning"
+      : badgeVariant === "success"
+        ? "bg-primary"
+        : "bg-info";
+
   return (
-    <div className="flex items-center justify-between rounded-[8px] border border-border bg-background px-4 py-2.5">
-      <span className="font-mono text-sm text-text truncate mr-2">{name}</span>
+    <div className={cn("flex items-center justify-between rounded-[8px] border bg-background px-4 py-2.5 transition-colors", rowToneClass)}>
+      <div className="mr-2 flex min-w-0 items-center gap-2">
+        <span className={cn("h-2 w-2 shrink-0 rounded-full ring-1 ring-black/40", dotClass)} />
+        <span className="truncate font-mono text-sm text-text">{name}</span>
+      </div>
       <div className="flex shrink-0 items-center gap-2">
-        <Badge variant={badgeVariant}>{badgeLabel}</Badge>
-        <button type="button" onClick={onRename} className="text-text-muted hover:text-info" title="Rename" aria-label={`Rename ${name}`}>
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
-        <button type="button" onClick={onDownload} className="text-text-muted hover:text-primary" title="Download" aria-label={`Download ${name}`}>
+        <Badge variant={effectiveBadgeVariant}>{effectiveBadgeLabel}</Badge>
+        {!isMd && (
+          <button type="button" onClick={onRename} className="rounded p-1 text-text-muted transition-colors hover:bg-info/10 hover:text-info" title="Rename" aria-label={`Rename ${name}`}>
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
+        <button type="button" onClick={onDownload} className="rounded p-1 text-text-muted transition-colors hover:bg-primary/10 hover:text-primary" title="Download" aria-label={`Download ${name}`}>
           <Download className="h-3.5 w-3.5" />
         </button>
-        <button type="button" onClick={onDelete} className="text-text-muted hover:text-danger" title="Delete" aria-label={`Delete ${name}`}>
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+        {!isMd && (
+          <button type="button" onClick={onDelete} className="rounded p-1 text-text-muted transition-colors hover:bg-danger/10 hover:text-danger" title="Delete" aria-label={`Delete ${name}`}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
     </div>
   );
@@ -194,7 +243,7 @@ function FileSectionCard({
   section: FileSection;
   loading: boolean;
 }) {
-  const { dir, label, badgeVariant, badgeLabel } = section;
+  const { dir, label, badgeVariant, badgeLabel, toneClass, iconClass } = section;
   const api = useMemo(() => apiFor(dir), [dir]);
 
   const [files, setFiles] = useState<string[]>([]);
@@ -296,7 +345,8 @@ function FileSectionCard({
     <>
       <Card
         title={label}
-        icon={<FileText className="h-4 w-4" />}
+        icon={<FileText className={cn("h-4 w-4", iconClass)} />}
+        className={toneClass}
         action={
           <div className="flex gap-2">
             <RetroBtn variant="ghost" size="sm" onClick={() => setShowCreate(true)}>

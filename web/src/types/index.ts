@@ -50,6 +50,9 @@ export interface RoutingConfig {
   TCP: string;
   UDP: string;
   TunDevice: string;
+  BypassMACs?: string[];
+  BypassIPs?: string[];
+  BypassIP6s?: string[];
 }
 
 export interface LoggingConfig {

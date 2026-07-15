@@ -6,6 +6,7 @@ import (
 	"net"
 	"sort"
 
+	"mihombreng/pkg/config"
 	"mihombreng/pkg/logger"
 
 	"github.com/sagernet/nftables"
@@ -15,32 +16,31 @@ import (
 )
 
 type TProxyService struct {
-	conn         *nftables.Conn
-	tproxyMark   uint32
-	mihomoMark   uint32
-	tproxyPort   uint16
-	routeTable   int
-	rulePref     int
-	tproxyFwMask uint32
-	tcpMode      string
-	udpMode      string
+	conn          *nftables.Conn
+	tproxyMark    uint32
+	mihomoMark    uint32
+	tproxyPort    uint16
+	routeTable    int
+	rulePref      int
+	tproxyFwMask  uint32
+	routingConfig config.RoutingConfig
 }
 
 func NewTProxyService() *TProxyService {
 	return &TProxyService{
-		tproxyMark:   0x80,
-		mihomoMark:   0x100,
-		tproxyPort:   7894,
-		routeTable:   80,
-		rulePref:     1024,
-		tproxyFwMask: 0xFF,
+		tproxyMark:    0x80,
+		mihomoMark:    0x100,
+		tproxyPort:    7894,
+		routeTable:    80,
+		rulePref:      1024,
+		tproxyFwMask:  0xFF,
+		routingConfig: config.RoutingConfig{},
 	}
 }
 
-func (tp *TProxyService) Setup(conn *nftables.Conn, tcpMode, udpMode string) error {
+func (tp *TProxyService) Setup(conn *nftables.Conn, routingConfig config.RoutingConfig) error {
 	tp.conn = conn
-	tp.tcpMode = tcpMode
-	tp.udpMode = udpMode
+	tp.routingConfig = routingConfig
 
 	if err := tp.createRules(); err != nil {
 		return fmt.Errorf("failed to create TPROXY rules: %w", err)
@@ -184,6 +184,74 @@ func (tp *TProxyService) createRules() error {
 		return err
 	}
 
+	logger.Debug("TPROXY: Creating bypass_mac set")
+	bypassMACSet := &nftables.Set{
+		Table:   table,
+		Name:    "bypass_mac",
+		KeyType: nftables.TypeEtherAddr,
+	}
+	if err := tp.conn.AddSet(bypassMACSet, nil); err != nil {
+		logger.Errorf("TPROXY: Failed to add bypass_mac set: %v", err)
+		return err
+	}
+	var bypassMACElements []nftables.SetElement
+	for _, macStr := range tp.routingConfig.BypassMACs {
+		mac, err := net.ParseMAC(macStr)
+		if err != nil {
+			logger.Warnf("TPROXY: Invalid MAC address %s: %v", macStr, err)
+			continue
+		}
+		bypassMACElements = append(bypassMACElements, nftables.SetElement{Key: mac})
+	}
+	if len(bypassMACElements) > 0 {
+		if err := tp.conn.SetAddElements(bypassMACSet, bypassMACElements); err != nil {
+			logger.Errorf("TPROXY: Failed to add bypass_mac elements: %v", err)
+			return err
+		}
+	}
+
+	logger.Debug("TPROXY: Creating bypass_ip set")
+	bypassIPSet := &nftables.Set{
+		Table:    table,
+		Name:     "bypass_ip",
+		KeyType:  nftables.TypeIPAddr,
+		Interval: true,
+	}
+	if err := tp.conn.AddSet(bypassIPSet, nil); err != nil {
+		logger.Errorf("TPROXY: Failed to add bypass_ip set: %v", err)
+		return err
+	}
+	if len(tp.routingConfig.BypassIPs) > 0 {
+		bypassIPElements := buildReservedSetElements(tp.routingConfig.BypassIPs, false)
+		if len(bypassIPElements) > 0 {
+			if err := tp.conn.SetAddElements(bypassIPSet, bypassIPElements); err != nil {
+				logger.Errorf("TPROXY: Failed to add bypass_ip elements: %v", err)
+				return err
+			}
+		}
+	}
+
+	logger.Debug("TPROXY: Creating bypass_ip6 set")
+	bypassIP6Set := &nftables.Set{
+		Table:    table,
+		Name:     "bypass_ip6",
+		KeyType:  nftables.TypeIP6Addr,
+		Interval: true,
+	}
+	if err := tp.conn.AddSet(bypassIP6Set, nil); err != nil {
+		logger.Errorf("TPROXY: Failed to add bypass_ip6 set: %v", err)
+		return err
+	}
+	if len(tp.routingConfig.BypassIP6s) > 0 {
+		bypassIP6Elements := buildReservedSetElements(tp.routingConfig.BypassIP6s, true)
+		if len(bypassIP6Elements) > 0 {
+			if err := tp.conn.SetAddElements(bypassIP6Set, bypassIP6Elements); err != nil {
+				logger.Errorf("TPROXY: Failed to add bypass_ip6 elements: %v", err)
+				return err
+			}
+		}
+	}
+
 	preroutingChain := tp.conn.AddChain(&nftables.Chain{
 		Name:     "mangle_prerouting",
 		Table:    table,
@@ -200,14 +268,133 @@ func (tp *TProxyService) createRules() error {
 		Priority: nftables.ChainPriorityMangle,
 	})
 
-	tp.addPreroutingRules(table, preroutingChain, reservedIPSet, reservedIP6Set)
-	tp.addOutputRules(table, outputChain, reservedIPSet, reservedIP6Set)
+	tp.addPreroutingRules(table, preroutingChain, reservedIPSet, reservedIP6Set, bypassMACSet, bypassIPSet, bypassIP6Set)
+	tp.addOutputRules(table, outputChain, reservedIPSet, reservedIP6Set, bypassIPSet, bypassIP6Set)
+
+	// Intercept IPv6 DNS requests
+	dnsPreroutingChain := tp.conn.AddChain(&nftables.Chain{
+		Name:     "dns_prerouting",
+		Table:    table,
+		Type:     nftables.ChainTypeNAT,
+		Hooknum:  nftables.ChainHookPrerouting,
+		Priority: nftables.ChainPriorityRef(-100),
+	})
+
+	dnsOutputChain := tp.conn.AddChain(&nftables.Chain{
+		Name:     "dns_output",
+		Table:    table,
+		Type:     nftables.ChainTypeNAT,
+		Hooknum:  nftables.ChainHookOutput,
+		Priority: nftables.ChainPriorityRef(-100),
+	})
+
+	dnsPortData := []byte{byte(1053 >> 8), byte(1053 & 0xFF)}
+
+	// TCP IPv6 DNS redirect (prerouting)
+	tp.conn.AddRule(&nftables.Rule{
+		Table: table,
+		Chain: dnsPreroutingChain,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{byte(unix.NFPROTO_IPV6)}},
+			&expr.Meta{Key: expr.MetaKeyL4PROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{unix.IPPROTO_TCP}},
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseTransportHeader, Offset: 2, Len: 2},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{0x00, 0x35}},
+			&expr.Immediate{Register: 2, Data: dnsPortData},
+			&expr.Redir{RegisterProtoMin: 2},
+		},
+	})
+
+	// UDP IPv6 DNS redirect (prerouting)
+	tp.conn.AddRule(&nftables.Rule{
+		Table: table,
+		Chain: dnsPreroutingChain,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{byte(unix.NFPROTO_IPV6)}},
+			&expr.Meta{Key: expr.MetaKeyL4PROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{unix.IPPROTO_UDP}},
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseTransportHeader, Offset: 2, Len: 2},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{0x00, 0x35}},
+			&expr.Immediate{Register: 2, Data: dnsPortData},
+			&expr.Redir{RegisterProtoMin: 2},
+		},
+	})
+
+	// TCP IPv6 DNS redirect (output)
+	tp.conn.AddRule(&nftables.Rule{
+		Table: table,
+		Chain: dnsOutputChain,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{byte(unix.NFPROTO_IPV6)}},
+			&expr.Meta{Key: expr.MetaKeyL4PROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{unix.IPPROTO_TCP}},
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseTransportHeader, Offset: 2, Len: 2},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{0x00, 0x35}},
+			&expr.Immediate{Register: 2, Data: dnsPortData},
+			&expr.Redir{RegisterProtoMin: 2},
+		},
+	})
+
+	// UDP IPv6 DNS redirect (output)
+	tp.conn.AddRule(&nftables.Rule{
+		Table: table,
+		Chain: dnsOutputChain,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{byte(unix.NFPROTO_IPV6)}},
+			&expr.Meta{Key: expr.MetaKeyL4PROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{unix.IPPROTO_UDP}},
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseTransportHeader, Offset: 2, Len: 2},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{0x00, 0x35}},
+			&expr.Immediate{Register: 2, Data: dnsPortData},
+			&expr.Redir{RegisterProtoMin: 2},
+		},
+	})
 
 	logger.Info("TPROXY nftables rules created successfully")
 	return nil
 }
 
-func (tp *TProxyService) addPreroutingRules(table *nftables.Table, chain *nftables.Chain, reservedIPSet, reservedIP6Set *nftables.Set) {
+func (tp *TProxyService) addPreroutingRules(table *nftables.Table, chain *nftables.Chain, reservedIPSet, reservedIP6Set, bypassMACSet, bypassIPSet, bypassIP6Set *nftables.Set) {
+	// Source MAC bypass
+	tp.conn.AddRule(&nftables.Rule{
+		Table: table,
+		Chain: chain,
+		Exprs: []expr.Any{
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseLLHeader, Offset: 6, Len: 6},
+			&expr.Lookup{SourceRegister: 1, SetName: bypassMACSet.Name, SetID: bypassMACSet.ID},
+			&expr.Counter{},
+			&expr.Verdict{Kind: expr.VerdictReturn},
+		},
+	})
+
+	// Source IP (v4) bypass
+	tp.conn.AddRule(&nftables.Rule{
+		Table: table,
+		Chain: chain,
+		Exprs: []expr.Any{
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 12, Len: 4},
+			&expr.Lookup{SourceRegister: 1, SetName: bypassIPSet.Name, SetID: bypassIPSet.ID},
+			&expr.Counter{},
+			&expr.Verdict{Kind: expr.VerdictReturn},
+		},
+	})
+
+	// Source IP (v6) bypass
+	tp.conn.AddRule(&nftables.Rule{
+		Table: table,
+		Chain: chain,
+		Exprs: []expr.Any{
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 8, Len: 16},
+			&expr.Lookup{SourceRegister: 1, SetName: bypassIP6Set.Name, SetID: bypassIP6Set.ID},
+			&expr.Counter{},
+			&expr.Verdict{Kind: expr.VerdictReturn},
+		},
+	})
+
 	port443 := []byte{0x01, 0xBB}
 	mihomoMarkData := []byte{0x00, 0x01, 0x00, 0x00}
 	tproxyMarkData := []byte{byte(tp.tproxyMark), 0x00, 0x00, 0x00}
@@ -236,7 +423,7 @@ func (tp *TProxyService) addPreroutingRules(table *nftables.Table, chain *nftabl
 		},
 	})
 
-	if tp.tcpMode == "tproxy" {
+	if string(tp.routingConfig.TCP) == "tproxy" {
 		tp.conn.AddRule(&nftables.Rule{
 			Table: table,
 			Chain: chain,
@@ -256,7 +443,7 @@ func (tp *TProxyService) addPreroutingRules(table *nftables.Table, chain *nftabl
 		})
 	}
 
-	if tp.udpMode == "tproxy" {
+	if string(tp.routingConfig.UDP) == "tproxy" {
 		tp.conn.AddRule(&nftables.Rule{
 			Table: table,
 			Chain: chain,
@@ -320,7 +507,7 @@ func (tp *TProxyService) addPreroutingRules(table *nftables.Table, chain *nftabl
 		},
 	})
 
-	if tp.tcpMode == "tproxy" {
+	if string(tp.routingConfig.TCP) == "tproxy" {
 		tp.conn.AddRule(&nftables.Rule{
 			Table: table,
 			Chain: chain,
@@ -338,7 +525,7 @@ func (tp *TProxyService) addPreroutingRules(table *nftables.Table, chain *nftabl
 		})
 	}
 
-	if tp.udpMode == "tproxy" {
+	if string(tp.routingConfig.UDP) == "tproxy" {
 		tp.conn.AddRule(&nftables.Rule{
 			Table: table,
 			Chain: chain,
@@ -357,7 +544,35 @@ func (tp *TProxyService) addPreroutingRules(table *nftables.Table, chain *nftabl
 	}
 }
 
-func (tp *TProxyService) addOutputRules(table *nftables.Table, chain *nftables.Chain, reservedIPSet, reservedIP6Set *nftables.Set) {
+func (tp *TProxyService) addOutputRules(table *nftables.Table, chain *nftables.Chain, reservedIPSet, reservedIP6Set, bypassIPSet, bypassIP6Set *nftables.Set) {
+	// Source IP (v4) bypass
+	tp.conn.AddRule(&nftables.Rule{
+		Table: table,
+		Chain: chain,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{byte(unix.NFPROTO_IPV4)}},
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 12, Len: 4},
+			&expr.Lookup{SourceRegister: 1, SetName: bypassIPSet.Name, SetID: bypassIPSet.ID},
+			&expr.Counter{},
+			&expr.Verdict{Kind: expr.VerdictReturn},
+		},
+	})
+
+	// Source IP (v6) bypass
+	tp.conn.AddRule(&nftables.Rule{
+		Table: table,
+		Chain: chain,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyNFPROTO, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: []byte{byte(unix.NFPROTO_IPV6)}},
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 8, Len: 16},
+			&expr.Lookup{SourceRegister: 1, SetName: bypassIP6Set.Name, SetID: bypassIP6Set.ID},
+			&expr.Counter{},
+			&expr.Verdict{Kind: expr.VerdictReturn},
+		},
+	})
+
 	port443 := []byte{0x01, 0xBB}
 	mihomoMarkData := []byte{0x00, 0x01, 0x00, 0x00}
 	tproxyMarkData := []byte{byte(tp.tproxyMark), 0x00, 0x00, 0x00}
@@ -428,7 +643,7 @@ func (tp *TProxyService) addOutputRules(table *nftables.Table, chain *nftables.C
 		},
 	})
 
-	if tp.tcpMode == "tproxy" {
+	if string(tp.routingConfig.TCP) == "tproxy" {
 		tp.conn.AddRule(&nftables.Rule{
 			Table: table,
 			Chain: chain,
@@ -444,7 +659,7 @@ func (tp *TProxyService) addOutputRules(table *nftables.Table, chain *nftables.C
 		})
 	}
 
-	if tp.udpMode == "tproxy" {
+	if string(tp.routingConfig.UDP) == "tproxy" {
 		tp.conn.AddRule(&nftables.Rule{
 			Table: table,
 			Chain: chain,

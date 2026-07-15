@@ -2,6 +2,8 @@ package routing
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"syscall"
 
 	"mihombreng/pkg/config"
@@ -10,6 +12,54 @@ import (
 	"github.com/sagernet/nftables"
 	"github.com/vishvananda/netlink"
 )
+
+var (
+	bridgeIptablesOriginal  string
+	bridgeIp6tablesOriginal string
+	bridgeTuningsApplied    bool
+)
+
+func applyBridgeSysctl() {
+	if data, err := os.ReadFile("/proc/sys/net/bridge/bridge-nf-call-iptables"); err == nil {
+		bridgeIptablesOriginal = strings.TrimSpace(string(data))
+		if err := os.WriteFile("/proc/sys/net/bridge/bridge-nf-call-iptables", []byte("0"), 0644); err != nil {
+			logger.Errorf("Failed to write bridge-nf-call-iptables: %v", err)
+		} else {
+			bridgeTuningsApplied = true
+			logger.Debug("Disabled bridge-nf-call-iptables")
+		}
+	}
+	if data, err := os.ReadFile("/proc/sys/net/bridge/bridge-nf-call-ip6tables"); err == nil {
+		bridgeIp6tablesOriginal = strings.TrimSpace(string(data))
+		if err := os.WriteFile("/proc/sys/net/bridge/bridge-nf-call-ip6tables", []byte("0"), 0644); err != nil {
+			logger.Errorf("Failed to write bridge-nf-call-ip6tables: %v", err)
+		} else {
+			bridgeTuningsApplied = true
+			logger.Debug("Disabled bridge-nf-call-ip6tables")
+		}
+	}
+}
+
+func restoreBridgeSysctl() {
+	if !bridgeTuningsApplied {
+		return
+	}
+	if bridgeIptablesOriginal != "" {
+		if err := os.WriteFile("/proc/sys/net/bridge/bridge-nf-call-iptables", []byte(bridgeIptablesOriginal), 0644); err != nil {
+			logger.Errorf("Failed to restore bridge-nf-call-iptables: %v", err)
+		} else {
+			logger.Debugf("Restored bridge-nf-call-iptables to %s", bridgeIptablesOriginal)
+		}
+	}
+	if bridgeIp6tablesOriginal != "" {
+		if err := os.WriteFile("/proc/sys/net/bridge/bridge-nf-call-ip6tables", []byte(bridgeIp6tablesOriginal), 0644); err != nil {
+			logger.Errorf("Failed to restore bridge-nf-call-ip6tables: %v", err)
+		} else {
+			logger.Debugf("Restored bridge-nf-call-ip6tables to %s", bridgeIp6tablesOriginal)
+		}
+	}
+	bridgeTuningsApplied = false
+}
 
 type NftablesService struct {
 	conn            *nftables.Conn
@@ -48,28 +98,28 @@ func (n *NftablesService) SetupRouting(routingConfig config.RoutingConfig) error
 	n.redirectService.Cleanup(nil)
 
 	if routingConfig.TCP == config.RoutingModeTProxy || routingConfig.UDP == config.RoutingModeTProxy {
-		logger.Debug("Step 2: Setting up TPROXY")
+		logger.Debug("Step 2: Apply bridge sysctl loop protection")
+		applyBridgeSysctl()
+
+		logger.Debug("Step 3: Setting up TPROXY")
 
 		conn, err := nftables.New()
 		if err != nil {
 			return fmt.Errorf("failed to create nftables connection: %w", err)
 		}
 
-		tcpMode := string(routingConfig.TCP)
-		udpMode := string(routingConfig.UDP)
-
-		if err := n.tproxyService.Setup(conn, tcpMode, udpMode); err != nil {
+		if err := n.tproxyService.Setup(conn, routingConfig); err != nil {
 			logger.Errorf("TPROXY setup failed: %v", err)
 			return fmt.Errorf("failed to setup TPROXY: %w", err)
 		}
 
-		logger.Debug("Step 3: Flushing TPROXY nftables")
+		logger.Debug("Step 4: Flushing TPROXY nftables")
 		if err := conn.Flush(); err != nil {
 			logger.Errorf("Failed to flush TPROXY nftables: %v", err)
 			return fmt.Errorf("failed to flush nftables: %w", err)
 		}
 
-		logger.Debug("Step 4: Setting up policy routing")
+		logger.Debug("Step 5: Setting up policy routing")
 		n.tproxyService.addPolicyRouting()
 
 		logger.Info("TPROXY routing setup completed")
@@ -122,6 +172,9 @@ func (n *NftablesService) SetupRouting(routingConfig config.RoutingConfig) error
 }
 
 func (n *NftablesService) CleanupAllRouting() error {
+	logger.Debug("Restoring bridge sysctl values")
+	restoreBridgeSysctl()
+
 	return n.withConn(func() error {
 		n.tunService.Cleanup(n.conn)
 		n.tproxyService.Cleanup(n.conn)
@@ -137,6 +190,12 @@ func (n *NftablesService) IsTUNRoutingActive() bool {
 func (n *NftablesService) ValidateRouting(routingConfig config.RoutingConfig) (bool, []string) {
 	var issues []string
 	valid := true
+
+	// Check 0: Config bypass lists validation
+	if configBypassIssues := validateBypassConfig(routingConfig); len(configBypassIssues) > 0 {
+		valid = false
+		issues = append(issues, configBypassIssues...)
+	}
 
 	// Check 1: Check for general privileges/nftables accessibility
 	conn, err := nftables.New()

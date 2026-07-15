@@ -49,6 +49,26 @@ function formatLineCount(content?: string) {
   return content.split("\n").length;
 }
 
+function isMarkdownFile(name?: string | null) {
+  return Boolean(name?.toLowerCase().endsWith(".md"));
+}
+
+function fileIndicatorClass(name: string, type: FileTab["type"], dirty: boolean, result?: ConfigValidationResult) {
+  if (dirty) return "bg-warning";
+  if (!isMarkdownFile(name) && type === "config" && result && !result.valid) return "bg-danger";
+  if (isMarkdownFile(name)) return "bg-info";
+  if (type === "config" && result?.valid) return "bg-primary";
+  return "bg-text-muted/50";
+}
+
+function fileAccentClass(name: string, type: FileTab["type"], dirty: boolean, result?: ConfigValidationResult) {
+  if (dirty) return "border-t-warning bg-warning/10";
+  if (!isMarkdownFile(name) && type === "config" && result && !result.valid) return "border-t-danger bg-danger/10";
+  if (isMarkdownFile(name)) return "border-t-info bg-info/10";
+  if (type === "config" && result?.valid) return "border-t-primary bg-primary/10";
+  return "border-t-text-muted/30 bg-background";
+}
+
 function Modal({
   open,
   title,
@@ -144,7 +164,7 @@ export default function ConfigEditorPage() {
   const invalidCount = Object.values(validation).filter((item) => !item.valid).length;
 
   useEffect(() => {
-    if (!activeFile || activeFile.type !== "config" || !activeFile.dirty) return;
+    if (!activeFile || activeFile.type !== "config" || !activeFile.dirty || activeFile.name.endsWith(".md")) return;
 
     const timeoutId = setTimeout(async () => {
       setValidating(activeFile.name);
@@ -162,7 +182,7 @@ export default function ConfigEditorPage() {
   }, [activeFile]);
 
   useEffect(() => {
-    if (!editorRef.current || !activeFile || !monacoInstance) return;
+    if (!editorRef.current || !activeFile || !monacoInstance || activeFile.name.endsWith(".md")) return;
     const model = editorRef.current.getModel();
     if (!model) return;
 
@@ -283,7 +303,7 @@ export default function ConfigEditorPage() {
   );
 
   const handleValidate = useCallback(async (): Promise<ConfigValidationResult | null> => {
-    if (!activeFile || activeFile.type !== "config") return null;
+    if (!activeFile || activeFile.type !== "config" || activeFile.name.endsWith(".md")) return null;
     setValidating(activeFile.name);
     try {
       const result = await mihomoApi.validateConfig(activeFile.name, activeFile.content);
@@ -319,6 +339,7 @@ export default function ConfigEditorPage() {
   };
 
   const saveTab = useCallback(async (tab: FileTab) => {
+    if (tab.name.endsWith(".md")) return false;
     if (tab.type === "config") {
       let latestValidation: ConfigValidationResult | null = validation[tab.name] || null;
       if (!latestValidation || tab.dirty) {
@@ -572,22 +593,28 @@ export default function ConfigEditorPage() {
   }
 
   const renderFileButton = (name: string, type: FileTab["type"]) => {
-    const isOpen = tabs.some((tab) => tab.name === name);
-    const isDirty = tabs.some((tab) => tab.name === name && tab.dirty);
+    const openTab = tabs.find((tab) => tab.name === name);
+    const isActive = activeTab === name;
+    const isActiveConfig = activeConfig === name && !isMarkdownFile(name);
+    const isDirty = Boolean(openTab?.dirty);
+    const dotClass = fileIndicatorClass(name, openTab?.type ?? type, isDirty, validation[name]);
+
     return (
       <button
         type="button"
         key={name}
         onClick={() => void openFile(name, type)}
         className={cn(
-          "flex w-full items-center gap-2 truncate rounded-[6px] px-2 py-1.5 text-left font-mono text-xs transition-colors",
-          activeTab === name
-            ? "bg-surface text-text"
-            : "text-text-muted hover:bg-surface/50 hover:text-text"
+          "relative flex w-full items-center gap-2 truncate rounded-[6px] border border-transparent px-2 py-1.5 text-left font-mono text-xs transition-colors",
+          isActive
+            ? "border-black bg-surface text-text shadow-[2px_2px_0_#000]"
+            : "text-text-muted hover:border-black/50 hover:bg-surface/50 hover:text-text",
+          isActiveConfig && "border-primary/70 bg-primary/10"
         )}
       >
-        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", isDirty ? "bg-warning" : isOpen ? "bg-info" : "bg-text-muted/50")} />
+        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full ring-1 ring-black/40", dotClass)} />
         <span className="truncate">{name}</span>
+        {isActiveConfig && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-primary" title="Active config" />}
       </button>
     );
   };
@@ -693,33 +720,36 @@ export default function ConfigEditorPage() {
                   <p className="font-mono text-[10px] italic text-text-muted">empty</p>
                 ) : (
                   <div className="space-y-0.5">
-                    {configs.map((name) => (
-                      <div key={name} className="group flex items-center">
-                        <div className="min-w-0 flex-1">{renderFileButton(name, "config")}</div>
-                        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                          {activeConfig === name ? (
-                            <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" title="Active config" />
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => void handleSetActive(name)}
-                              className="rounded px-1 py-0.5 font-mono text-[9px] text-text-muted hover:text-text"
-                              title="Set as active"
-                            >
-                              Live
-                            </button>
+                    {configs.map((name) => {
+                      const isDoc = isMarkdownFile(name);
+                      return (
+                        <div key={name} className="group flex items-center gap-1">
+                          <div className="min-w-0 flex-1">{renderFileButton(name, "config")}</div>
+                          {!isDoc && (
+                            <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                              {activeConfig !== name && (
+                                <button
+                                  type="button"
+                                  onClick={() => void handleSetActive(name)}
+                                  className="rounded border border-transparent px-1 py-0.5 font-mono text-[9px] text-text-muted hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                                  title="Set as active"
+                                >
+                                  Live
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setDeleteTarget(name)}
+                                className="rounded border border-transparent px-1 py-0.5 font-mono text-[9px] text-danger hover:border-danger/40 hover:bg-danger/10 hover:text-danger"
+                                title="Delete config"
+                              >
+                                Del
+                              </button>
+                            </div>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => setDeleteTarget(name)}
-                            className="rounded px-1 py-0.5 font-mono text-[9px] text-danger hover:text-danger/80"
-                            title="Delete config"
-                          >
-                            Del
-                          </button>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -775,34 +805,40 @@ export default function ConfigEditorPage() {
             <>
               {/* Tabs bar */}
               <div className="flex items-center gap-0.5 overflow-x-auto rounded-t-[10px] border-2 border-black bg-surface">
-                {tabs.map((tab) => (
-                  <div
-                    key={tab.name}
-                    className={cn(
-                      "group flex items-center border-r-2 border-black font-mono text-xs transition-colors",
-                      activeTab === tab.name
-                        ? "bg-background text-text"
-                        : "bg-surface text-text-muted hover:bg-background/50"
-                    )}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab(tab.name)}
-                      className="flex items-center gap-1.5 px-3 py-2"
+                {tabs.map((tab) => {
+                  const dotClass = fileIndicatorClass(tab.name, tab.type, tab.dirty, validation[tab.name]);
+                  const activeAccentClass = fileAccentClass(tab.name, tab.type, tab.dirty, validation[tab.name]);
+                  const isActive = activeTab === tab.name;
+
+                  return (
+                    <div
+                      key={tab.name}
+                      className={cn(
+                        "group flex items-center border-r-2 border-t-4 border-black font-mono text-xs transition-colors",
+                        isActive
+                          ? cn("text-text shadow-[inset_0_-2px_0_#000]", activeAccentClass)
+                          : "border-t-transparent bg-surface text-text-muted hover:bg-background/50 hover:text-text"
+                      )}
                     >
-                      {tab.dirty && <span className="h-2 w-2 rounded-full bg-warning" title="Unsaved changes" />}
-                      <span className="max-w-32 truncate">{tab.name}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => closeTab(tab.name, e)}
-                      className="mr-2 rounded px-1 text-[10px] opacity-0 group-hover:opacity-100 hover:bg-danger hover:text-white"
-                      aria-label={`Close ${tab.name}`}
-                    >
-                      x
-                    </button>
-                  </div>
-                ))}
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab(tab.name)}
+                        className="flex items-center gap-1.5 px-3 py-2"
+                      >
+                        <span className={cn("h-2 w-2 rounded-full ring-1 ring-black/50", dotClass)} title={tab.dirty ? "Unsaved changes" : undefined} />
+                        <span className="max-w-32 truncate">{tab.name}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => closeTab(tab.name, e)}
+                        className="mr-2 rounded px-1 text-[10px] opacity-0 transition-colors group-hover:opacity-100 hover:bg-danger hover:text-white"
+                        aria-label={`Close ${tab.name}`}
+                      >
+                        x
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Toolbar */}
@@ -810,6 +846,7 @@ export default function ConfigEditorPage() {
                 <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="info">{tabs.length} open</Badge>
+                    {activeFile?.name.endsWith(".md") && <Badge variant="info">Doc (Read-Only)</Badge>}
                     {dirtyCount > 0 && <Badge variant="warning">{dirtyCount} unsaved</Badge>}
                     {activeFile && activeConfig === activeFile.name && <Badge variant="success">active</Badge>}
                     {activeFile?.type === "config" && activeValidation?.valid && <Badge variant="success">validated</Badge>}
@@ -828,7 +865,7 @@ export default function ConfigEditorPage() {
                         Diff View
                       </RetroBtn>
                     )}
-                    {activeFile?.type === "config" && (
+                    {activeFile?.type === "config" && !activeFile.name.endsWith(".md") && (
                       <RetroBtn
                         variant="ghost"
                         size="sm"
@@ -840,7 +877,7 @@ export default function ConfigEditorPage() {
                         Validate
                       </RetroBtn>
                     )}
-                    {activeFile?.dirty && (
+                    {activeFile?.dirty && !activeFile.name.endsWith(".md") && (
                       <RetroBtn
                         variant="ghost"
                         size="sm"
@@ -851,7 +888,7 @@ export default function ConfigEditorPage() {
                         Revert Draft
                       </RetroBtn>
                     )}
-                    {activeFile && activeConfig !== activeFile.name && activeFile.type === "config" && (
+                    {activeFile && activeConfig !== activeFile.name && activeFile.type === "config" && !activeFile.name.endsWith(".md") && (
                       <RetroBtn
                         variant="ghost"
                         size="sm"
@@ -873,27 +910,29 @@ export default function ConfigEditorPage() {
                     >
                       Save All
                     </RetroBtn>
-                    <RetroBtn
-                      variant="primary"
-                      size="sm"
-                      onClick={handleSave}
-                      disabled={!activeFile?.dirty}
-                      loading={saving === activeFile?.name}
-                      title="Save current file (Ctrl+S)"
-                    >
-                      <Save className="mr-1.5 inline-block h-3.5 w-3.5" />
-                      Save Draft
-                    </RetroBtn>
+                    {!activeFile?.name.endsWith(".md") && (
+                      <RetroBtn
+                        variant="primary"
+                        size="sm"
+                        onClick={handleSave}
+                        disabled={!activeFile?.dirty}
+                        loading={saving === activeFile?.name}
+                        title="Save current file (Ctrl+S)"
+                      >
+                        <Save className="mr-1.5 inline-block h-3.5 w-3.5" />
+                        Save Draft
+                      </RetroBtn>
+                    )}
                   </div>
                 </div>
               </div>
 
               {activeFile && (
                 <div className="grid gap-3 border-x-2 border-t-2 border-black bg-background p-3 md:grid-cols-4">
-                  <MetaTile label="File" value={activeFile.name} detail={formatFileType(activeFile.type)} />
-                  <MetaTile label="State" value={activeFile.dirty ? "Unsaved" : "Saved"} detail={activeFile.dirty ? "Local browser buffer" : "Matches last loaded copy"} />
+                  <MetaTile label="File" value={activeFile.name} detail={activeFile.name.endsWith(".md") ? "Documentation" : formatFileType(activeFile.type)} />
+                  <MetaTile label="State" value={activeFile.name.endsWith(".md") ? "Read-Only" : (activeFile.dirty ? "Unsaved" : "Saved")} detail={activeFile.name.endsWith(".md") ? "System documentation" : (activeFile.dirty ? "Local browser buffer" : "Matches last loaded copy")} />
                   <MetaTile label="Size" value={`${formatLineCount(activeFile.content)} lines`} detail={`${activeFile.content.length.toLocaleString()} chars`} />
-                  <MetaTile label="Runtime" value={activeConfig === activeFile.name ? "Active" : "Inactive"} detail={activeFile.type === "config" ? "Mihomo config slot" : "Referenced by config"} />
+                  <MetaTile label="Runtime" value={activeFile.name.endsWith(".md") ? "N/A" : (activeConfig === activeFile.name ? "Active" : "Inactive")} detail={activeFile.name.endsWith(".md") ? "System documentation" : (activeFile.type === "config" ? "Mihomo config slot" : "Referenced by config")} />
                 </div>
               )}
 
@@ -903,7 +942,7 @@ export default function ConfigEditorPage() {
                   showDiff ? (
                     <DiffEditor
                       key={`diff-${activeFile.name}`}
-                      language="yaml"
+                      language={activeFile.name.endsWith(".md") ? "markdown" : "yaml"}
                       theme="vs-dark"
                       original={activeFile.savedContent}
                       modified={activeFile.content}
@@ -919,12 +958,13 @@ export default function ConfigEditorPage() {
                         automaticLayout: true,
                         padding: { top: 8 },
                         originalEditable: false,
+                        readOnly: activeFile.name.endsWith(".md"),
                       }}
                     />
                   ) : (
                     <Editor
                       key={activeFile.name}
-                      language="yaml"
+                      language={activeFile.name.endsWith(".md") ? "markdown" : "yaml"}
                       theme="vs-dark"
                       value={activeFile.content}
                       onChange={handleEditorChange}
@@ -940,6 +980,7 @@ export default function ConfigEditorPage() {
                         bracketPairColorization: { enabled: true },
                         automaticLayout: true,
                         padding: { top: 8 },
+                        readOnly: activeFile.name.endsWith(".md"),
                       }}
                     />
                   )

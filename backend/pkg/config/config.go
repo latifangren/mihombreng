@@ -72,7 +72,10 @@ func createDefaultConfig(path string) (*Config, error) {
 			WorkingDir:  "/etc/mihombreng",
 			AutoRestart: true,
 			Routing: RoutingConfig{
-				TunDevice: "Meta",
+				TunDevice:  "Meta",
+				BypassMACs: make([]string, 0),
+				BypassIPs:  make([]string, 0),
+				BypassIP6s: make([]string, 0),
 			},
 		},
 		Logging: LoggingConfig{

@@ -32,10 +32,10 @@ MIHOMO_ARCH_ARM64:=mihomo-linux-arm64
 MIHOMO_ARCH_ARMHF:=mihomo-linux-armv7
 
 # GeoIP / Geosite
-URL_GEOIP_MMDB:=https://github.com/rtaserver/meta-rules-dat/releases/latest/download/country.mmdb
-URL_GEOIP_DAT:=https://github.com/rtaserver/meta-rules-dat/releases/latest/download/geoip.dat
-URL_GEOSITE:=https://github.com/rtaserver/meta-rules-dat/releases/latest/download/geosite.dat
-URL_GEOIP_META:=https://github.com/rtaserver/meta-rules-dat/releases/download/latest/geoip.metadb
+URL_GEOIP_MMDB:=https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/country.mmdb
+URL_GEOIP_DAT:=https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/geoip.dat
+URL_GEOSITE:=https://github.com/MetaCubeX/meta-rules-dat/releases/latest/download/geosite.dat
+URL_GEOIP_META:=https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip.metadb
 
 .PHONY: all clean download-assets build-core build-amd64 build-arm64 build-armhf deb-amd64 deb-arm64 deb-armhf arch-x86_64 arch-aarch64 arch-armv7h build-all build-deb build-arch backend-build web-build docker-build help
 

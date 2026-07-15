@@ -216,6 +216,7 @@ func Setup(r *gin.Engine, mihomoService domain.MihomoService, cfg *config.Config
 		{
 			appGroup.GET("/config", appHandler.GetConfig)
 			appGroup.PUT("/config", appHandler.UpdateConfig)
+			appGroup.GET("/check-update", appHandler.CheckUpdate)
 			appGroup.GET("/logs", streamHandler.StreamAppLogs)
 			appGroup.DELETE("/logs", streamHandler.ClearAppLogs)
 			appGroup.GET("/diagnostics", appHandler.Diagnostics)

@@ -435,6 +435,164 @@ func (h *AppHandler) extractHost(rawURL string) string {
 	return trimmed
 }
 
+// GitHubRelease represents the subset of fields we need from the GitHub releases API.
+type GitHubRelease struct {
+	TagName     string `json:"tag_name"`
+	Name        string `json:"name"`
+	HTMLURL     string `json:"html_url"`
+	Body        string `json:"body"`
+	PublishedAt string `json:"published_at"`
+}
+
+// CheckUpdate godoc
+// @Summary Check for application updates
+// @Description Compare the current version against the latest GitHub release
+// @Tags Mihombreng App
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 502 {object} map[string]interface{}
+// @Router /app/check-update [get]
+func (h *AppHandler) CheckUpdate(c *gin.Context) {
+	client := &http.Client{Timeout: 8 * time.Second}
+
+	req, err := http.NewRequest("GET", "https://api.github.com/repos/latifangren/mihombreng/releases/latest", nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   "Failed to create update check request",
+		})
+		return
+	}
+	req.Header.Set("User-Agent", "mihombreng/"+h.config.Version)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"error":   "Failed to reach GitHub API: " + err.Error(),
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"error": fmt.Sprintf("GitHub API returned HTTP %d: %s",
+				resp.StatusCode, strings.TrimSpace(string(bodyBytes))),
+		})
+		return
+	}
+
+	var release GitHubRelease
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 64*1024)).Decode(&release); err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"success": false,
+			"error":   "Failed to decode GitHub release response: " + err.Error(),
+		})
+		return
+	}
+
+	currentVersion := strings.TrimSpace(h.config.Version)
+	latestVersion := strings.TrimPrefix(strings.TrimSpace(release.TagName), "v")
+
+	hasUpdate := compareSemver(latestVersion, currentVersion) > 0
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"has_update":      hasUpdate,
+			"current_version": currentVersion,
+			"latest_version":  latestVersion,
+			"release_name":    release.Name,
+			"release_url":     release.HTMLURL,
+			"changelog":       release.Body,
+			"published_at":    release.PublishedAt,
+			"backup_warning":  "Before upgrading, it is strongly recommended to create a manual backup from Backup & Sync to protect your configuration files. Upgrades may overwrite defaults and custom provider files.",
+			"upgrade_hint":    "Use your system package manager to upgrade (opkg on OpenWrt, apt/dpkg on Debian/Ubuntu). Do not overwrite config files manually; let the package manager handle file conflicts safely.",
+		},
+	})
+}
+
+// compareSemver compares two semver strings (major.minor.patch).
+// Returns >0 if a > b, <0 if a < b, 0 if equal.
+// Falls back to string inequality if parsing fails.
+func compareSemver(a, b string) int {
+	aMaj, aMin, aPat := parseSemver(a)
+	bMaj, bMin, bPat := parseSemver(b)
+
+	// If any major segment failed to parse, fall back to string comparison.
+	if aMaj == "" || bMaj == "" {
+		if a > b {
+			return 1
+		} else if a < b {
+			return -1
+		}
+		return 0
+	}
+
+	aMajN := toInt(aMaj)
+	bMajN := toInt(bMaj)
+	if aMajN != bMajN {
+		return aMajN - bMajN
+	}
+
+	aMinN := toInt(aMin)
+	bMinN := toInt(bMin)
+	if aMinN != bMinN {
+		return aMinN - bMinN
+	}
+
+	// Try numeric patch comparison first.
+	aPatN, aErr := parseInt(aPat)
+	bPatN, bErr := parseInt(bPat)
+	if aErr == nil && bErr == nil {
+		return aPatN - bPatN
+	}
+
+	// Fall back to string comparison for patch.
+	if aPat > bPat {
+		return 1
+	} else if aPat < bPat {
+		return -1
+	}
+	return 0
+}
+
+// toInt converts a digit string to int; returns 0 on empty or non-numeric input.
+func toInt(s string) int {
+	n, _ := parseInt(s)
+	return n
+}
+
+func parseSemver(v string) (major, minor, patch string) {
+	// Strip leading 'v'
+	v = strings.TrimPrefix(v, "v")
+	parts := strings.SplitN(v, ".", 3)
+	if len(parts) == 3 {
+		return parts[0], parts[1], parts[2]
+	}
+	if len(parts) == 2 {
+		return parts[0], parts[1], ""
+	}
+	if len(parts) == 1 {
+		return parts[0], "", ""
+	}
+	return "", "", ""
+}
+
+func parseInt(s string) (int, error) {
+	n := 0
+	for _, ch := range s {
+		if ch < '0' || ch > '9' {
+			return 0, fmt.Errorf("not an integer")
+		}
+		n = n*10 + int(ch-'0')
+	}
+	return n, nil
+}
+
 // UpdateConfig godoc
 // @Summary Update application configuration
 // @Description Update Mihombreng application configuration

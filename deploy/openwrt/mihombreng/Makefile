@@ -132,8 +132,9 @@ endef
 define Package/mihombreng/conffiles
 /etc/mihombreng/mihombreng.yaml
 /etc/mihombreng/configs/config.yaml
-/etc/mihombreng/proxy_providers/proxy.yaml
-/etc/mihombreng/rule_providers/rule.yaml
+/etc/mihombreng/proxy_providers/id.yaml
+/etc/mihombreng/proxy_providers/sg.yaml
+/etc/mihombreng/rule_providers/general.yaml
 endef
 
 $(eval $(call BuildPackage,mihombreng))

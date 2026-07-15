@@ -7,12 +7,13 @@ import { StatusCard } from "@/components/status/status-card";
 import { Card } from "@/components/ui/card";
 import { DataState } from "@/components/ui/data-state";
 import { RetroBtn } from "@/components/ui/retro-btn";
+import { UpdateWarningBanner } from "@/components/ui/update-warning-banner";
 import { Terminal } from "@/components/terminal/terminal";
 import { SkeletonCard, SkeletonStatBox, Skeleton } from "@/components/ui/skeleton";
 import { formatBytes, formatDuration, formatTraffic } from "@/utils/format";
 import { useNavigate } from "react-router-dom";
-import { configApi } from "@/services/api";
-import type { AppConfig } from "@/types";
+import { configApi, mihomoApi } from "@/services/api";
+import type { AppConfig, AppUpdateCheck } from "@/types";
 import toast from "react-hot-toast";
 import {
   Activity,
@@ -84,10 +85,12 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   const [config, setConfig] = useState<AppConfig | null>(null);
+  const [updateCheck, setUpdateCheck] = useState<AppUpdateCheck | null>(null);
   const [updatingRouting, setUpdatingRouting] = useState(false);
 
   useEffect(() => {
     configApi.getConfig().then(setConfig).catch(console.error);
+    mihomoApi.checkUpdate().then(setUpdateCheck).catch(() => setUpdateCheck(null));
   }, []);
 
   const handleRoutingSwitch = async (tcp: string, udp: string) => {
@@ -204,6 +207,8 @@ export default function DashboardPage() {
           </RetroBtn>
         </div>
       </div>
+
+      <UpdateWarningBanner update={updateCheck} />
 
       {statusError && (
         <DataState

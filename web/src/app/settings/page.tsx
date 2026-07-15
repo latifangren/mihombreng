@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataState, FreshnessPill } from "@/components/ui/data-state";
 import { RetroBtn } from "@/components/ui/retro-btn";
+import { UpdateWarningBanner } from "@/components/ui/update-warning-banner";
 import { configApi, mihomoApi } from "@/services/api";
 import {
   AlertTriangle,
@@ -17,7 +18,7 @@ import {
   Save,
   Shield,
 } from "lucide-react";
-import type { AppConfig, MihomoConfig, RoutingConfig } from "@/types";
+import type { AppConfig, AppUpdateCheck, MihomoConfig, RoutingConfig } from "@/types";
 import toast from "react-hot-toast";
 
 /* ------------------------------------------------------------------ */
@@ -58,6 +59,7 @@ export default function SettingsPage() {
   const [coreVersion, setCoreVersion] = useState("");
   const [availableConfigs, setAvailableConfigs] = useState<string[]>([]);
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
+  const [updateCheck, setUpdateCheck] = useState<AppUpdateCheck | null>(null);
   const [dirty, setDirty] = useState(false);
   const savedConfigRef = useRef<string>("");
 
@@ -91,6 +93,10 @@ export default function SettingsPage() {
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    mihomoApi.checkUpdate().then(setUpdateCheck).catch(() => setUpdateCheck(null));
+  }, []);
 
   const [validationIssues, setValidationIssues] = useState<string[]>([]);
   const [validating, setValidating] = useState(false);
@@ -259,6 +265,8 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      <UpdateWarningBanner update={updateCheck} />
 
       {loadError && (
         <DataState

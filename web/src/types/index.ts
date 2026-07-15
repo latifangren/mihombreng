@@ -19,6 +19,18 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
+export interface AppUpdateCheck {
+  has_update: boolean;
+  current_version: string;
+  latest_version: string;
+  release_name: string;
+  release_url: string;
+  changelog: string;
+  published_at: string;
+  backup_warning: string;
+  upgrade_hint: string;
+}
+
 export interface AppConfig {
   version: string;
   environment: string;

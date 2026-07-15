@@ -1,4 +1,4 @@
-import type { ApiResponse, MihomoStatus, AppConfig, DashboardInfo, ParseResponse, DnsLookupResponse, BackupEntry, BackupStatus, DiagnosticsResponse, ConfigValidationResult, SubscriptionProfile, SubscriptionProfileInput, TrafficMetrics, ConnectionsListResponse, RemoteBackupTarget, RemoteSyncStatus, UnlockTestTarget, UnlockTestResult } from "@/types";
+import type { ApiResponse, MihomoStatus, AppConfig, AppUpdateCheck, DashboardInfo, ParseResponse, DnsLookupResponse, BackupEntry, BackupStatus, DiagnosticsResponse, ConfigValidationResult, SubscriptionProfile, SubscriptionProfileInput, TrafficMetrics, ConnectionsListResponse, RemoteBackupTarget, RemoteSyncStatus, UnlockTestTarget, UnlockTestResult } from "@/types";
 
 const API = "";
 
@@ -129,6 +129,15 @@ export const mihomoApi = {
       body: JSON.stringify({ filename, content }),
     });
     return r.data || { valid: false, summary: "Validation response missing", issues: [], checked_with: [] };
+  },
+  async checkUpdate(): Promise<AppUpdateCheck | null> {
+    try {
+      const r = await fetchApi<AppUpdateCheck>("/api/v1/app/check-update");
+      return r.data || null;
+    } catch (err) {
+      console.debug("Update check unavailable", err);
+      return null;
+    }
   },
   async getGeoIP(): Promise<{ ipv4: string; ipv6: string }> {
     const getOne = async (url: string) => {

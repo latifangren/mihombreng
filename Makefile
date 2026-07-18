@@ -25,7 +25,7 @@ BIN_ARM64:=mihombreng-linux-arm64
 BIN_ARMHF:=mihombreng-linux-armv7
 
 # Mihomo
-MIHOMO_VERSION:=v1.19.28
+MIHOMO_VERSION:=v1.19.29
 MIHOMO_URL_BASE:=https://github.com/MetaCubeX/mihomo/releases/download/$(MIHOMO_VERSION)
 MIHOMO_ARCH_AMD64:=mihomo-linux-amd64-v1
 MIHOMO_ARCH_ARM64:=mihomo-linux-arm64
@@ -75,7 +75,9 @@ web-build:
 	cd web && npm install && npm run build
 
 docker-build:
-	docker build -f deploy/docker/Dockerfile -t mihombreng:latest .
+	docker build -f deploy/docker/Dockerfile \
+		--build-arg MIHOMO_VERSION=$(MIHOMO_VERSION) \
+		-t mihombreng:latest .
 
 # ── Single-arch build (for deb-*/arch-* targets) ────────────
 

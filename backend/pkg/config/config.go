@@ -58,6 +58,18 @@ func (c *Config) Save(path string) error {
 }
 
 func createDefaultConfig(path string) (*Config, error) {
+	workingDir := filepath.Dir(path)
+	isSystem := workingDir == "/etc/mihombreng"
+
+	var mihomoConfigPath, loggingFile string
+	if isSystem {
+		mihomoConfigPath = "/etc/mihombreng/configs/config.yaml"
+		loggingFile = "/var/log/mihombreng.log"
+	} else {
+		mihomoConfigPath = filepath.Join(workingDir, "configs", "config.yaml")
+		loggingFile = filepath.Join(workingDir, "mihombreng.log")
+	}
+
 	config := &Config{
 		Version:     getEnv("APP_VERSION", "1.0.0"),
 		Environment: getEnv("APP_ENV", "production"),
@@ -68,8 +80,8 @@ func createDefaultConfig(path string) (*Config, error) {
 		},
 		Mihomo: MihomoConfig{
 			CorePath:    "/usr/bin/mihomo",
-			ConfigPath:  "/etc/mihombreng/configs/config.yaml",
-			WorkingDir:  "/etc/mihombreng",
+			ConfigPath:  mihomoConfigPath,
+			WorkingDir:  workingDir,
 			AutoRestart: true,
 			Routing: RoutingConfig{
 				TunDevice:  "Meta",
@@ -80,7 +92,7 @@ func createDefaultConfig(path string) (*Config, error) {
 		},
 		Logging: LoggingConfig{
 			Level:      getEnv("LOG_LEVEL", "info"),
-			File:       "/var/log/mihombreng.log",
+			File:       loggingFile,
 			MaxSize:    100,
 			MaxBackups: 3,
 			MaxAge:     28,

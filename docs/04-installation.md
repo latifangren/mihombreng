@@ -251,7 +251,7 @@ Main app config: `/etc/mihombreng/mihombreng.yaml`
 Example:
 
 ```yaml
-version: "1.0.0"
+version: "1.2.5"
 environment: production
 server:
   port: "7777"
@@ -280,6 +280,9 @@ api:
     enabled: true
     allowed_origins: []
 ```
+
+### User-Mode Fallback (XDG)
+If the application is run directly without root access (no `sudo`) and no explicit configurations path is specified (i.e. run as `./mihombreng`), it will check if the default `/etc/mihombreng/` path is writable. If not, it automatically falls back to running under `~/.config/mihombreng/mihombreng.yaml` with user-relative paths for `working_dir`, `config_path`, and `logging.file`.
 
 Mihomo controller settings (local external controller on 127.0.0.1 for zero-exposure security):
 

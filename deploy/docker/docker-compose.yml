@@ -4,7 +4,7 @@ services:
       context: ../..
       dockerfile: deploy/docker/Dockerfile
       args:
-        MIHOMO_VERSION: v1.19.17
+        MIHOMO_VERSION: v1.19.29
     image: mihombreng:latest
     container_name: mihombreng
     restart: unless-stopped

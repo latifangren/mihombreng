@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2026-07-18
+
+### Added
+- **User-Mode Config Fallback (XDG)**: When running the binary without an explicit `-c` flag on a system where `/etc/mihombreng/` is not writable (e.g. downloaded binary, non-root user), the application now automatically falls back to `~/.config/mihombreng/mihombreng.yaml`. The fallback config is fully bootstrapped with user-relative paths (`working_dir`, `config_path`, `logging.file`) so mihomo can be run without `sudo` out of the box. Packages (`.deb`, `.ipk`, `.apk`) and `systemd` deployments are unaffected as they always pass `-c` explicitly.
+
+### Changed
+- **Mihomo Core v1.19.29**: Updated default bundled Mihomo core version to `v1.19.29` across Dockerfile, docker-compose, and OpenWrt package Makefiles.
+- **Dockerfile Go Runtime**: Updated Docker build stage from `golang:1.23-alpine` to `golang:1.25-alpine` to match `go.mod` toolchain requirement.
+- **Docker Build MIHOMO_VERSION Propagation**: Fixed `docker-build` Makefile target to pass `--build-arg MIHOMO_VERSION=$(MIHOMO_VERSION)` so the single Makefile variable controls the Mihomo version in Docker builds.
+- **OpenWrt ARM GOARM Support**: Added `GOARM` variable support to `scripts/build-openwrt.sh` with default `GOARM=7` for ARM targets (matching OpenWrt Makefile convention). Accepts `--goarm=<5|6|7>` flag for explicit override.
+
 ## [1.2.4] - 2026-07-15
 
 ### Added

@@ -8,7 +8,7 @@ COPY web/ .
 RUN npm run build
 
 # ── Stage 2: Build Go backend (with embedded frontend) ──
-FROM golang:1.23-alpine AS backend
+FROM golang:1.25-alpine AS backend
 
 RUN apk add --no-cache swig git
 
@@ -29,7 +29,7 @@ RUN apk add --no-cache wget curl unzip tar gzip
 
 WORKDIR /downloads
 
-ARG MIHOMO_VERSION=v1.19.17
+ARG MIHOMO_VERSION=v1.19.29
 ARG TARGETARCH
 
 RUN case ${TARGETARCH} in \

@@ -8,8 +8,9 @@ set -euo pipefail
 
 ARCH=""
 BUILD_DIR=""
-MIHOMO_VERSION="v1.19.28"
+MIHOMO_VERSION="v1.19.29"
 MIHOMO_ARCH=""
+GOARM=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -17,6 +18,7 @@ while [[ $# -gt 0 ]]; do
     --build-dir=*)   BUILD_DIR="${1#*=}" ;;
     --mihomo-version=*) MIHOMO_VERSION="${1#*=}" ;;
     --mihomo-arch=*) MIHOMO_ARCH="${1#*=}" ;;
+    --goarm=*)       GOARM="${1#*=}" ;;
     *)               echo "Unknown parameter: $1"; exit 1 ;;
   esac
   shift
@@ -25,7 +27,7 @@ done
 # ── Validate ────────────────────────────────────────────────
 
 if [[ -z "$ARCH" || -z "$BUILD_DIR" ]]; then
-  echo "Usage: $0 --arch=<arch> --build-dir=<dir> [--mihomo-version=<ver>] [--mihomo-arch=<arch>]"
+  echo "Usage: $0 --arch=<arch> --build-dir=<dir> [--mihomo-version=<ver>] [--mihomo-arch=<arch>] [--goarm=<5|6|7>]"
   exit 1
 fi
 
@@ -83,10 +85,13 @@ if [[ -z "$TARGET_GOARCH" ]]; then
   exit 1
 fi
 
-GOOS=linux \
-GOARCH=$TARGET_GOARCH \
-CGO_ENABLED=0 \
-go build -v -trimpath -ldflags="-s -w" -o bin/mihombreng ../cmd/server
+if [[ "$TARGET_GOARCH" == "arm" ]]; then
+  GOOS=linux GOARCH=arm GOARM="${GOARM:-7}" CGO_ENABLED=0 \
+    go build -v -trimpath -ldflags="-s -w" -o bin/mihombreng ../cmd/server
+else
+  GOOS=linux GOARCH="$TARGET_GOARCH" CGO_ENABLED=0 \
+    go build -v -trimpath -ldflags="-s -w" -o bin/mihombreng ../cmd/server
+fi
 
 cd ..
 

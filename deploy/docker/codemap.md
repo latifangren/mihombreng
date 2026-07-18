@@ -7,7 +7,7 @@ Docker containerization for Mihombreng, providing a multi-stage build pipeline t
 Four-stage multi-architecture Dockerfile following the build-artifact-narrowing pattern:
 - **Stage 1** (`frontend`): Node 20 Alpine — `npm ci` + `npm run build` for the React/Vite SPA
 - **Stage 2** (`backend`): Go 1.23 Alpine — downloads Go modules, copies embedded frontend dist, builds a statically-linked binary with `CGO_ENABLED=0` and stripped symbols (`-ldflags="-s -w"`)
-- **Stage 3** (`downloader`): Alpine — fetches architecture-specific Mihomo binary (v1.19.17), GeoIP/GeoSite databases (`country.mmdb`, `geoip.dat`, `geosite.dat`, `geoip.metadb`), and three third-party dashboard UIs (zashboard, metacubexd, yacd)
+- **Stage 3** (`downloader`): Alpine — fetches architecture-specific Mihomo binary (v1.19.29), GeoIP/GeoSite databases (`country.mmdb`, `geoip.dat`, `geosite.dat`, `geoip.metadb`), and three third-party dashboard UIs (zashboard, metacubexd, yacd)
 - **Stage 4** (runtime): Alpine — installs `ca-certificates`, `iptables`, `ip6tables`, `iproute2`, `tzdata`; copies all artifacts; exposes ports 7777 (app), 9090 (Mihomo API), 7890 (HTTP proxy), 7891 (redirect), 9091
 
 Two compose files differentiate prod vs dev:

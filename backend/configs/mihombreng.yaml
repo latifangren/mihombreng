@@ -1,6 +1,6 @@
 # Mihombreng Application Configuration
 
-version: "1.0.0"                       # Configuration version
+version: "1.2.5"                       # Configuration version
 environment: production
 
 server:
@@ -51,3 +51,13 @@ api:
     - Content-Length
     allow_credentials: true       # Allow cookies and authentication
     max_age: 3600                 # Preflight cache duration in seconds
+
+backup:
+  auto_backup_enabled: false
+  max_backups: 5
+  max_age_days: 14
+  backup_dir: "/etc/mihombreng/backups"
+  targets: []
+
+unlock_test:
+  targets: []

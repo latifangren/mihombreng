@@ -10,7 +10,7 @@
 - **Routing modes**: Typed `RoutingMode` string enum with `TUN`, `TProxy`, `Redirect`, `Disable` constants.
 - **Backup config**: `BackupConfig` with `auto_backup_enabled`, `max_backups`, `max_age_days`, `backup_dir`.
 - **Remote target config**: `RemoteBackupTarget` with `name`, `type`, `url`, `username`, `password`, `enabled`.
-- **Default config**: Built-in defaults (port 7777, release mode, log to `/var/log/mihombreng.log`) with environment variable overrides via `getEnv()`.
+- **Default config**: Built-in defaults (port 7777, release mode, log to `/var/log/mihombreng.log`) with environment variable overrides via `getEnv()`. Default log and working directory paths are computed relative to the config file's parent directory — for example, when falling back to the user config, paths resolve to `~/.config/mihombreng/mihombreng.log` and `~/.config/mihombreng/` respectively.
 
 ## Flow
 ```

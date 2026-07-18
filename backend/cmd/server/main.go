@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -43,6 +44,31 @@ func main() {
 	flag.StringVar(&configPath, "config", "/etc/mihombreng/mihombreng.yaml", "Path to configuration file")
 	flag.StringVar(&configPath, "c", "/etc/mihombreng/mihombreng.yaml", "Path to configuration file (shorthand)")
 	flag.Parse()
+
+	// Detect if user explicitly passed -c or --config
+	explicitConfig := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "c" || f.Name == "config" {
+			explicitConfig = true
+		}
+	})
+
+	if !explicitConfig {
+		// System path was not explicitly requested — check if it's accessible
+		systemPath := "/etc/mihombreng/mihombreng.yaml"
+		if _, err := os.Stat(systemPath); os.IsNotExist(err) {
+			// File doesn't exist — check if we can create the parent dir
+			if mkdirErr := os.MkdirAll(filepath.Dir(systemPath), 0755); mkdirErr != nil {
+				// Can't create /etc/mihombreng/ — fall back to user config
+				homeDir, _ := os.UserHomeDir()
+				userConfigPath := filepath.Join(homeDir, ".config", "mihombreng", "mihombreng.yaml")
+				log.Printf("System config not accessible (%v), falling back to user config: %s", mkdirErr, userConfigPath)
+				configPath = userConfigPath
+			}
+			// else: MkdirAll succeeded, configPath stays as system path
+		}
+		// else: file exists at system path, configPath stays as-is
+	}
 
 	cfg, err := config.Load(configPath)
 	if err != nil {

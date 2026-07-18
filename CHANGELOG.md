@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docker Healthcheck Path**: Corrected Docker healthcheck endpoint from `/api/app/config` to `/api/v1/app/config`.
 - **Manual Release Workflow Maintenance**: Updated manual publish workflow release action to `softprops/action-gh-release@v2` and refreshed default release tag metadata.
 - **OpenWrt IPK Artifact Naming**: Standardized OpenWrt 24.10 `.ipk` artifact names from matrix targets to preserve full package architecture names such as `aarch64_cortex-a53` and `arm_cortex-a15_neon-vfpv4`.
+- **OpenWrt Target Coverage**: Removed `mips_34kc` from release and build matrices after SDK image not found on 24.10 and 25.12.
 
 ## [1.2.4] - 2026-07-15
 

@@ -143,7 +143,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [x86_64, aarch64_generic, aarch64_cortex-a53, aarch64_cortex-a72, arm_cortex-a7, arm_cortex-a9, arm_cortex-a15_neon-vfpv4, mips_24kc, mips_34kc, mipsel_24kc, mipsel_74kc, i386_pentium-mmx]
+        arch: [x86_64, aarch64_generic, aarch64_cortex-a53, aarch64_cortex-a72, arm_cortex-a7, arm_cortex-a9, arm_cortex-a15_neon-vfpv4, mips_24kc, mipsel_24kc, mipsel_74kc, i386_pentium-mmx]
         branch: [openwrt-24.10, openwrt-25.12]
     steps:
       - name: Checkout repository

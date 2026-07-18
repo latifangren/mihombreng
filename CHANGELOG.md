@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dockerfile Go Runtime**: Updated Docker build stage from `golang:1.23-alpine` to `golang:1.25-alpine` to match `go.mod` toolchain requirement.
 - **Docker Build MIHOMO_VERSION Propagation**: Fixed `docker-build` Makefile target to pass `--build-arg MIHOMO_VERSION=$(MIHOMO_VERSION)` so the single Makefile variable controls the Mihomo version in Docker builds.
 - **OpenWrt ARM GOARM Support**: Added `GOARM` variable support to `scripts/build-openwrt.sh` with default `GOARM=7` for ARM targets (matching OpenWrt Makefile convention). Accepts `--goarm=<5|6|7>` flag for explicit override.
+- **Release Workflow Toolchain Alignment**: Updated CI and release workflows to use Go 1.25, matching `backend/go.mod`.
+- **OpenWrt Release Artifact Naming**: Fixed OpenWrt 25.12 `.apk` artifact naming to derive release target names from the matrix instead of fragile package filename parsing, preventing duplicated `.apk.apk` filenames.
+- **OpenWrt Target Matrix Expansion**: Added `mips_34kc` and `mipsel_24kc` to the OpenWrt release matrix for broader router chipset coverage.
+- **Android Release Asset Naming**: Renamed Android raw command-line binary artifact from `.apk` suffix to `mihombreng-<version>-android-arm64` to avoid implying it is an installable Android package.
+- **Docker Healthcheck Path**: Corrected Docker healthcheck endpoint from `/api/app/config` to `/api/v1/app/config`.
+- **Manual Release Workflow Maintenance**: Updated manual publish workflow release action to `softprops/action-gh-release@v2` and refreshed default release tag metadata.
+- **OpenWrt IPK Artifact Naming**: Standardized OpenWrt 24.10 `.ipk` artifact names from matrix targets to preserve full package architecture names such as `aarch64_cortex-a53` and `arm_cortex-a15_neon-vfpv4`.
 
 ## [1.2.4] - 2026-07-15
 

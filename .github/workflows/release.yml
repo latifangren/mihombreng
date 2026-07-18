@@ -64,7 +64,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
           cache: true
           cache-dependency-path: backend/go.sum
 
@@ -116,8 +116,8 @@ jobs:
           cp backend/bin/mihombreng-linux-ppc64 dist/mihombreng-${VERSION}-linux-ppc64
           cp backend/bin/mihombreng-linux-ppc64le dist/mihombreng-${VERSION}-linux-ppc64le
           cp backend/bin/mihombreng-linux-s390x dist/mihombreng-${VERSION}-linux-s390x
-          # 2. Android binary packaged as .apk
-          cp backend/bin/mihombreng-android-arm64 dist/mihombreng-${VERSION}-android-arm64.apk
+          # 2. Android raw binary
+          cp backend/bin/mihombreng-android-arm64 dist/mihombreng-${VERSION}-android-arm64
           # 3. Rename and copy Debian packages
           for f in build/*.deb; do
             if [ -f "$f" ]; then
@@ -143,7 +143,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [x86_64, aarch64_generic, aarch64_cortex-a53, aarch64_cortex-a72, arm_cortex-a7, arm_cortex-a9, arm_cortex-a15_neon-vfpv4, mips_24kc, mipsel_74kc, i386_pentium-mmx]
+        arch: [x86_64, aarch64_generic, aarch64_cortex-a53, aarch64_cortex-a72, arm_cortex-a7, arm_cortex-a9, arm_cortex-a15_neon-vfpv4, mips_24kc, mips_34kc, mipsel_24kc, mipsel_74kc, i386_pentium-mmx]
         branch: [openwrt-24.10, openwrt-25.12]
     steps:
       - name: Checkout repository
@@ -159,7 +159,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25"
           cache-dependency-path: backend/go.sum
 
       - name: Setup Feed Structure
@@ -187,20 +187,18 @@ jobs:
           mkdir -p output
           VERSION="${{ needs.check-version.outputs.version }}"
           if [[ "${{ matrix.branch }}" == "openwrt-24.10" ]]; then
+            target="${{ matrix.arch }}"
             for f in $(find bin/packages -name "mihombreng_*.ipk"); do
-              filename=$(basename "$f")
-              arch=$(echo "$filename" | awk -F'_' '{print $3}' | sed 's/\.ipk//')
-              cp "$f" "output/mihombreng-${VERSION}-${arch}.ipk"
+              cp "$f" "output/mihombreng-${VERSION}-${target}.ipk"
             done
             for f in $(find bin/packages -name "luci-app-mihombreng_*.ipk"); do
               cp "$f" "output/luci-app-mihombreng-${VERSION}_all.ipk"
             done
           else
             # 25.12 uses apk packages
+            target="${{ matrix.arch }}"
             for f in $(find bin/packages -name "mihombreng-*.apk" ! -name "luci-app-*"); do
-              filename=$(basename "$f")
-              arch=$(echo "$filename" | sed -E "s/mihombreng-.*_([^.]+)\.apk/\1/")
-              cp "$f" "output/mihombreng-${VERSION}-${arch}.apk"
+              cp "$f" "output/mihombreng-${VERSION}-${target}.apk"
             done
             for f in $(find bin/packages -name "luci-app-mihombreng-*.apk"); do
               cp "$f" "output/luci-app-mihombreng-${VERSION}-all.apk"
@@ -281,7 +279,7 @@ jobs:
           * **Standalone Core**: Direct standalone Go compiled binary executable files (`mihombreng-<version>-linux-<arch>`)
 
           ### 📱 Android
-          * **Standalone Binary (`.apk`)**: Command-line wrapper executable (`mihombreng-<version>-android-arm64.apk`)
+          * **Standalone Binary**: Raw Android command-line executable (`mihombreng-<version>-android-arm64`)
 
           ---
 

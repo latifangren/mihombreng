@@ -93,6 +93,6 @@ WORKDIR /etc/mihombreng
 EXPOSE 7777 9090 7890 7891 9091
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:7777/api/app/config || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:7777/api/v1/app/config || exit 1
 
 CMD ["/usr/share/mihombreng/mihombreng", "-c", "/etc/mihombreng/mihombreng.yaml"]

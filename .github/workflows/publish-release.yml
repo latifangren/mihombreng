@@ -6,9 +6,9 @@ on:
       tag_name:
         description: 'Release Tag (e.g., v1.0.0 or v1.0.0-beta.1)'
         required: true
-        default: 'v1.0.0'
+        default: 'v1.2.5'
       workflow_run_id:
-        description: 'Workflow Run ID (from build-package.yml)'
+        description: 'Workflow Run ID (from release.yml or build-openwrt.yml)'
         required: true
       release_notes:
         description: 'Additional Release Notes (optional)'
@@ -41,7 +41,7 @@ jobs:
           ls -lhR downloaded/
 
       - name: Create Release and Upload Assets
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag_name }}
           body: |

@@ -36,6 +36,12 @@ func FetchSubscription(url string) ([]*Proxy, error) {
 var embeddedProxyLinkPattern = regexp.MustCompile(`(?i)(vmess|vless|trojan|ss)://[^\s"'<>]+`)
 
 func ParseSubscription(content string) ([]*Proxy, error) {
+	if IsRustAvailable() {
+		if proxies, err := ParseSubscriptionRust(content); err == nil && len(proxies) > 0 {
+			return proxies, nil
+		}
+	}
+
 	decoded, err := base64.StdEncoding.DecodeString(content)
 	if err != nil {
 		decoded, err = base64.RawStdEncoding.DecodeString(content)

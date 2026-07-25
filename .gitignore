@@ -28,6 +28,12 @@ web/vite.err
 # ── Build Artifacts ────────────────────────────────────────
 build/
 core/
+target/
+**/target/
+*.a
+*.so
+*.dylib
+*.dll
 
 # ── Dev Tools ──────────────────────────────────────────────
 .playwright-mcp/

@@ -1,4 +1,4 @@
-.PHONY: build dev docs clean help deps install-air setup-dev
+.PHONY: build dev docs clean help deps install-air setup-dev build-rust
 
 help:
 	@echo "Mihombreng - Backend API for mihomo tunneling"
@@ -21,7 +21,11 @@ help:
 	@echo "  make docs               # Generate API documentation"
 	@echo "  make clean && make build # Clean build"
 
-build:
+build-rust:
+	@echo "Building Rust converter crate..."
+	@cargo build --release --manifest-path ../crates/mihombreng-converter/Cargo.toml
+
+build: build-rust
 	@echo "=== Building Mihombreng (Development) ==="
 	@echo "[1/4] Building frontend..."
 	@cd ../web && npm install && npm run build

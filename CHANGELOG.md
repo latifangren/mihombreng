@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Rust Subscription Converter & C-ABI FFI**: Introduced a high-performance Rust crate (`crates/mihombreng-converter`) for SIMD-accelerated Base64 payload decoding and zero-copy proxy link extraction (VMess, VLess, Trojan, Shadowsocks). Integrated with Go via CGO FFI bindings (`ParseSubscriptionRust`) with an automatic native Go fallback when CGO or Rust library is disabled.
+- **Interactive YAML Config Auto-Correction**: Implemented backend AST-based auto-correction endpoint (`POST /api/v1/mihomo/configs/autofix`) to inject missing mandatory Mihomo system keys (`external-controller`, `secret`, `mode`) while preserving comments and custom user rules. Added an "Auto-Fix & Format" button in the Monaco Editor toolbar alongside an interactive side-by-side Diff Preview modal for reviewing proposed fixes before applying.
+- **Rust IP CIDR & Boundary Merger**: Added FFI capabilities (`parse_and_merge_cidrs`) to the Rust converter crate to parse lists of CIDRs, perform zero-copy sorting, merge adjacent/overlapping subnets, and export boundaries configured with an increment byte matching nftables interval expectations. Integrated seamlessly with the routing service (`tproxy.go`) with build tag isolation and pure Go fallback.
+
+### Fixed
+- **CI CGO Build Tag Isolation**: Isolated Rust CGO FFI bindings behind explicit `//go:build cgo && rust_ffi` tags (and `//go:build !cgo || !rust_ffi` for fallback) to prevent GCC linker errors (`undefined reference to free_proxy_array`) during standard `go test ./...` runs in GitHub Actions CI pipelines.
+
 ## [1.2.5] - 2026-07-18
 
 ### Added

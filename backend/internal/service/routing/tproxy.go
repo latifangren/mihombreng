@@ -702,6 +702,12 @@ type ipInterval struct {
 }
 
 func buildReservedSetElements(reserved []string, ipv6 bool) []nftables.SetElement {
+	if IsRustCIDRMergerAvailable() {
+		if elements, err := ParseAndMergeCIDRsRust(reserved, ipv6); err == nil {
+			return elements
+		}
+	}
+
 	intervals := make([]ipInterval, 0, len(reserved))
 	for _, cidr := range reserved {
 		_, network, err := net.ParseCIDR(cidr)

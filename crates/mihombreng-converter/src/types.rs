@@ -68,6 +68,34 @@ pub struct CProxyArray {
     pub error: *const c_char,
 }
 
+#[repr(C)]
+pub struct CIpInterval {
+    pub start: *mut u8,
+    pub start_len: usize,
+    pub end: *mut u8,
+    pub end_len: usize,
+}
+
+#[repr(C)]
+pub struct CIpIntervalArray {
+    pub intervals: *mut CIpInterval,
+    pub count: usize,
+    pub error: *const c_char,
+}
+
+impl CIpInterval {
+    pub unsafe fn free_bytes(&mut self) {
+        if !self.start.is_null() && self.start_len > 0 {
+            let slice = std::ptr::slice_from_raw_parts_mut(self.start, self.start_len);
+            let _ = Box::from_raw(slice);
+        }
+        if !self.end.is_null() && self.end_len > 0 {
+            let slice = std::ptr::slice_from_raw_parts_mut(self.end, self.end_len);
+            let _ = Box::from_raw(slice);
+        }
+    }
+}
+
 pub fn string_to_c_char(s: &str) -> *mut c_char {
     let clean = s.replace('\0', "");
     CString::new(clean).unwrap_or_default().into_raw()

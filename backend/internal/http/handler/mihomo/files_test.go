@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"mihombreng/pkg/config"
@@ -89,5 +90,53 @@ func TestGetFiles(t *testing.T) {
 
 	if wInvalid.Code != http.StatusBadRequest {
 		t.Errorf("expected status 400 for invalid dir, got %d", wInvalid.Code)
+	}
+}
+
+func TestAutoFixConfig(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	cfg := &config.Config{}
+	mockService := &MockMihomoService{}
+	handler := NewMihomoFilesHandler(mockService, cfg, "")
+
+	router := gin.New()
+	router.POST("/mihomo/configs/autofix", handler.AutoFixConfig)
+
+	body := `{"content": "port: 7890\nproxies: []"}`
+	req, _ := http.NewRequest("POST", "/mihomo/configs/autofix", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var res struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Content      string   `json:"content"`
+			AppliedFixes []string `json:"applied_fixes"`
+		} `json:"data"`
+	}
+
+	if err := json.Unmarshal(w.Body.Bytes(), &res); err != nil {
+		t.Fatalf("failed to unmarshal response: %v", err)
+	}
+
+	if !res.Success {
+		t.Error("expected success to be true")
+	}
+
+	if len(res.Data.AppliedFixes) != 3 {
+		t.Errorf("expected 3 applied fixes, got %d: %v", len(res.Data.AppliedFixes), res.Data.AppliedFixes)
+	}
+
+	if !strings.Contains(res.Data.Content, "external-controller: 127.0.0.1:9090") {
+		t.Errorf("expected content to contain external-controller, got:\n%s", res.Data.Content)
+	}
+	if !strings.Contains(res.Data.Content, "mode: rule") {
+		t.Errorf("expected content to contain mode, got:\n%s", res.Data.Content)
 	}
 }

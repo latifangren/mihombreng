@@ -1,8 +1,9 @@
-//go:build cgo
+//go:build cgo && rust_ffi
 
 package converter
 
 /*
+#cgo LDFLAGS: -L${SRCDIR}/../../../crates/mihombreng-converter/target/release -lmihombreng_converter
 #include <stdlib.h>
 #include <stdbool.h>
 

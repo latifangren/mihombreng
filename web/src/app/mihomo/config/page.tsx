@@ -12,7 +12,7 @@ import { mihomoApi } from "@/services/api";
 import { cn } from "@/utils/cn";
 import toast from "react-hot-toast";
 import type { editor } from "monaco-editor";
-import type { ConfigValidationResult } from "@/types";
+import type { ConfigValidationResult, ConfigAutoFixResult } from "@/types";
 import {
   CircleAlert,
   CircleCheckBig,
@@ -26,6 +26,7 @@ import {
   Save,
   ShieldCheck,
   Trash2,
+  Wand2,
   X,
 } from "lucide-react";
 
@@ -74,18 +75,20 @@ function Modal({
   title,
   children,
   onClose,
+  maxWidth = "max-w-lg",
 }: {
   open: boolean;
   title: string;
   children: ReactNode;
   onClose: () => void;
+  maxWidth?: string;
 }) {
   const containerRef = useModalAccessibility(open, onClose);
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 backdrop-blur-sm">
-      <div ref={containerRef} className="w-full max-w-lg rounded-[16px] border-2 border-black bg-surface p-5 shadow-[8px_8px_0_#000] outline-none">
+      <div ref={containerRef} className={cn("w-full rounded-[16px] border-2 border-black bg-surface p-5 shadow-[8px_8px_0_#000] outline-none", maxWidth)}>
         <div className="mb-4 flex items-center justify-between gap-3 border-b-2 border-black/70 pb-3">
           <h3 className="font-heading text-lg uppercase tracking-wide text-text">{title}</h3>
           <button
@@ -145,6 +148,8 @@ export default function ConfigEditorPage() {
   const [saving, setSaving] = useState<string | null>(null);
   const [validating, setValidating] = useState<string | null>(null);
   const [validation, setValidation] = useState<Record<string, ConfigValidationResult>>({});
+  const [autoFixResult, setAutoFixResult] = useState<ConfigAutoFixResult | null>(null);
+  const [autoFixing, setAutoFixing] = useState(false);
   const [showNewFile, setShowNewFile] = useState(false);
   const [newFileName, setNewFileName] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -321,6 +326,50 @@ export default function ConfigEditorPage() {
       setValidating(null);
     }
   }, [activeFile]);
+
+  const handleAutoFix = useCallback(async () => {
+    if (!activeFile || activeFile.type !== "config" || activeFile.name.endsWith(".md")) return;
+    setAutoFixing(true);
+    try {
+      const res = await mihomoApi.autoFixConfig(activeFile.content);
+      if (res.applied_fixes && res.applied_fixes.length > 0) {
+        setAutoFixResult(res);
+      } else {
+        toast.success("No fixes needed for this configuration");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Auto-Fix failed");
+    } finally {
+      setAutoFixing(false);
+    }
+  }, [activeFile]);
+
+  const handleApplyAutoFix = useCallback(async () => {
+    if (!activeFile || !autoFixResult) return;
+    const newContent = autoFixResult.content;
+    const fileName = activeFile.name;
+
+    setTabs((prev) =>
+      prev.map((t) =>
+        t.name === fileName
+          ? { ...t, content: newContent, dirty: newContent !== t.savedContent }
+          : t
+      )
+    );
+
+    setAutoFixResult(null);
+    toast.success("Auto-fixes applied");
+
+    setValidating(fileName);
+    try {
+      const result = await mihomoApi.validateConfig(fileName, newContent);
+      setValidation((prev) => ({ ...prev, [fileName]: result }));
+    } catch (err) {
+      console.error("Re-validation failed after auto-fix:", err);
+    } finally {
+      setValidating(null);
+    }
+  }, [activeFile, autoFixResult]);
 
   const handleJumpToError = (line: number | undefined, column: number | undefined) => {
     if (!line) return;
@@ -866,16 +915,28 @@ export default function ConfigEditorPage() {
                       </RetroBtn>
                     )}
                     {activeFile?.type === "config" && !activeFile.name.endsWith(".md") && (
-                      <RetroBtn
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => void handleValidate()}
-                        loading={validating === activeFile.name}
-                        title="Validate configuration (Alt+V)"
-                      >
-                        <ShieldCheck className="mr-1.5 inline-block h-3.5 w-3.5" />
-                        Validate
-                      </RetroBtn>
+                      <>
+                        <RetroBtn
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => void handleValidate()}
+                          loading={validating === activeFile.name}
+                          title="Validate configuration (Alt+V)"
+                        >
+                          <ShieldCheck className="mr-1.5 inline-block h-3.5 w-3.5" />
+                          Validate
+                        </RetroBtn>
+                        <RetroBtn
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => void handleAutoFix()}
+                          loading={autoFixing}
+                          title="Auto-fix missing keys & normalize YAML"
+                        >
+                          <Wand2 className="mr-1.5 inline-block h-3.5 w-3.5" />
+                          Auto-Fix
+                        </RetroBtn>
+                      </>
                     )}
                     {activeFile?.dirty && !activeFile.name.endsWith(".md") && (
                       <RetroBtn
@@ -1078,6 +1139,60 @@ export default function ConfigEditorPage() {
             </RetroBtn>
           </div>
         </div>
+      </Modal>
+
+      <Modal open={!!autoFixResult} title="Auto-Fix Preview" onClose={() => setAutoFixResult(null)} maxWidth="max-w-4xl">
+        {autoFixResult && activeFile && (
+          <div className="space-y-4">
+            <p className="font-mono text-xs text-text-muted">
+              The following fixes were automatically generated. Review the diff below before applying changes to your draft.
+            </p>
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Applied Fixes</p>
+              <div className="flex flex-wrap gap-2">
+                {autoFixResult.applied_fixes.map((fix) => (
+                  <Badge key={fix} variant="info">
+                    {fix}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Changes Preview (Current vs Proposed)</p>
+              <div className="h-72 overflow-hidden rounded-[10px] border-2 border-black">
+                <DiffEditor
+                  height="100%"
+                  language="yaml"
+                  theme="vs-dark"
+                  original={activeFile.content}
+                  modified={autoFixResult.content}
+                  options={{
+                    fontSize: 12,
+                    fontFamily: "JetBrains Mono, monospace",
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    lineNumbers: "on",
+                    renderWhitespace: "selection",
+                    bracketPairColorization: { enabled: true },
+                    automaticLayout: true,
+                    padding: { top: 8 },
+                    originalEditable: false,
+                    readOnly: true,
+                  }}
+                />
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 pt-2">
+              <RetroBtn size="sm" variant="ghost" onClick={() => setAutoFixResult(null)}>
+                Cancel
+              </RetroBtn>
+              <RetroBtn size="sm" variant="primary" onClick={() => void handleApplyAutoFix()}>
+                <Wand2 className="mr-1.5 inline-block h-3.5 w-3.5" />
+                Apply Fixes
+              </RetroBtn>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

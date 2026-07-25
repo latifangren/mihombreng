@@ -125,6 +125,7 @@ func Setup(r *gin.Engine, mihomoService domain.MihomoService, cfg *config.Config
 				mihomoFilesHandler.CreateFile(c)
 			})
 			mihomoGroup.POST("/configs/validate", mihomoFilesHandler.ValidateConfig)
+			mihomoGroup.POST("/configs/autofix", mihomoFilesHandler.AutoFixConfig)
 			mihomoGroup.POST("/configs/upload", func(c *gin.Context) {
 				c.Params = append(c.Params, gin.Param{Key: "dir", Value: "configs"})
 				mihomoFilesHandler.UploadFile(c)

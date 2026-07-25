@@ -128,6 +128,11 @@ export interface ConfigValidationResult {
   normalized_to?: string;
 }
 
+export interface ConfigAutoFixResult {
+  content: string;
+  applied_fixes: string[];
+}
+
 export interface FileEntry {
   name: string;
   is_dir: boolean;

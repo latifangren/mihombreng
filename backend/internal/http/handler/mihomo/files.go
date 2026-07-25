@@ -735,6 +735,94 @@ func (h *MihomoFilesHandler) SetActiveConfigPath(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Active config updated successfully"})
 }
 
+// AutoFixConfig godoc
+// @Summary Auto fix Mihomo config content
+// @Description Check and auto-fix missing required keys (external-controller, secret, mode) and normalize YAML
+// @Tags Mihomo files
+// @Accept json
+// @Produce json
+// @Param request body map[string]string true "Config content to fix"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string "Error message"
+// @Router /mihomo/configs/autofix [post]
+func (h *MihomoFilesHandler) AutoFixConfig(c *gin.Context) {
+	var req struct {
+		Content string `json:"content" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var root yaml.Node
+	if err := yaml.Unmarshal([]byte(req.Content), &root); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid YAML content: " + err.Error()})
+		return
+	}
+
+	var mappingNode *yaml.Node
+	if root.Kind == yaml.DocumentNode && len(root.Content) > 0 {
+		if root.Content[0].Kind == yaml.MappingNode {
+			mappingNode = root.Content[0]
+		}
+	} else if root.Kind == yaml.MappingNode {
+		mappingNode = &root
+	}
+
+	if mappingNode == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "YAML root is not a mapping/object"})
+		return
+	}
+
+	existingKeys := make(map[string]bool)
+	for i := 0; i < len(mappingNode.Content); i += 2 {
+		existingKeys[mappingNode.Content[i].Value] = true
+	}
+
+	var appliedFixes []string
+
+	if !existingKeys["external-controller"] {
+		mappingNode.Content = append(mappingNode.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "external-controller"},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "127.0.0.1:9090"},
+		)
+		appliedFixes = append(appliedFixes, "Added missing external-controller")
+	}
+
+	if !existingKeys["secret"] {
+		mappingNode.Content = append(mappingNode.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "secret"},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: ""},
+		)
+		appliedFixes = append(appliedFixes, "Added missing secret")
+	}
+
+	if !existingKeys["mode"] {
+		mappingNode.Content = append(mappingNode.Content,
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "mode"},
+			&yaml.Node{Kind: yaml.ScalarNode, Value: "rule"},
+		)
+		appliedFixes = append(appliedFixes, "Added missing mode")
+	}
+
+	var buf bytes.Buffer
+	encoder := yaml.NewEncoder(&buf)
+	encoder.SetIndent(2)
+	if err := encoder.Encode(&root); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to encode fixed YAML: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"content":       buf.String(),
+			"applied_fixes": appliedFixes,
+		},
+	})
+}
+
 func isPathSafe(path string, basePath string) bool {
 	absPath, err := filepath.Abs(path)
 	if err != nil {

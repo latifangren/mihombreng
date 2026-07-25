@@ -1,4 +1,4 @@
-import type { ApiResponse, MihomoStatus, AppConfig, AppUpdateCheck, DashboardInfo, ParseResponse, DnsLookupResponse, BackupEntry, BackupStatus, DiagnosticsResponse, ConfigValidationResult, SubscriptionProfile, SubscriptionProfileInput, TrafficMetrics, ConnectionsListResponse, RemoteBackupTarget, RemoteSyncStatus, UnlockTestTarget, UnlockTestResult } from "@/types";
+import type { ApiResponse, MihomoStatus, AppConfig, AppUpdateCheck, DashboardInfo, ParseResponse, DnsLookupResponse, BackupEntry, BackupStatus, DiagnosticsResponse, ConfigValidationResult, ConfigAutoFixResult, SubscriptionProfile, SubscriptionProfileInput, TrafficMetrics, ConnectionsListResponse, RemoteBackupTarget, RemoteSyncStatus, UnlockTestTarget, UnlockTestResult } from "@/types";
 
 const API = "";
 
@@ -129,6 +129,13 @@ export const mihomoApi = {
       body: JSON.stringify({ filename, content }),
     });
     return r.data || { valid: false, summary: "Validation response missing", issues: [], checked_with: [] };
+  },
+  async autoFixConfig(content: string): Promise<ConfigAutoFixResult> {
+    const r = await fetchApi<ConfigAutoFixResult>("/api/v1/mihomo/configs/autofix", {
+      method: "POST",
+      body: JSON.stringify({ content }),
+    });
+    return r.data || { content: "", applied_fixes: [] };
   },
   async checkUpdate(): Promise<AppUpdateCheck | null> {
     try {

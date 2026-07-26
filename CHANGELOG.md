@@ -18,7 +18,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dashboard Recovery Toolbar**: Created a "Quick Maintenance" footer segment inside the Routing Control card on the main dashboard, adding one-click buttons to reload firewall rules, flush DNS resolver caches (`dnsmasq`), and restart the Mihomo core.
 
 ### Fixed
+- **Transparent Routing Table Verification**: Fixed TUN mode routing table verification and default gateway check to lookup specifically tables 2022 and 200 instead of default main table.
+- **Orphaned Policy Rule Garbage Collection**: Fixed transition from TUN to TPROXY mode preventing stale priorities (9000-9010) and detached Meta interface entries from remaining in kernel rule databases.
+- **Diagnostics Provider Anti-Bot By-pass**: Fixed HTTP 403 Forbidden on geoip provider lookup by using desktop User-Agent headers.
 - **CI CGO Build Tag Isolation**: Isolated Rust CGO FFI bindings behind explicit `//go:build cgo && rust_ffi` tags (and `//go:build !cgo || !rust_ffi` for fallback) to prevent GCC linker errors (`undefined reference to free_proxy_array`) during standard `go test ./...` runs in GitHub Actions CI pipelines.
+
+### Changed
+- **Settings Workspace Polish**: Redesigned remaining settings sub-sectors (App Info, Logging, Backup, Raw Editor) with high-end color markers, validation helpers, formatters, and navigational shortcut components.
+- **Exposed Auto-Restart Policies**: Decoupled auto-restart triggers from structural master toggles, laying out flat checkboxes for crash watchdog, config change sync, interface transitions, routing failure, and scheduled reboots.
+- **Visual Retro Accent Guides**: Added distinct neo-brutalist alert color themes (red, yellow, blue, green) to active reboot triggers inside settings for transparent control visualization.
+- **Visual Uptime and Core Sync**: Synchronized Topbar active tunnel mode indicator to read directly from active running kernel states (`status.health.mode`) instead of configuration preview values on disk, preventing visual layout mismatches before daemon restart.
+- **TUN Interface Configuration Experience**: Upgraded TUN device input box to an interface/stack dropdown picker selecting common targets (`Meta`, `tun0`, `gvisor`, `mixed`, `system`) natively without typing.
 
 ## [1.2.5] - 2026-07-18
 

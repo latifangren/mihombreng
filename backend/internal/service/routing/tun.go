@@ -72,6 +72,30 @@ func (t *TUNService) Cleanup(_ *nftables.Conn) error {
 	rule.Priority = 100
 	netlink.RuleDel(rule)
 
+	for _, family := range []int{unix.AF_INET, unix.AF_INET6} {
+		if rules, err := netlink.RuleList(family); err == nil {
+			for _, r := range rules {
+				if r.Table == 200 || r.Table == 2022 ||
+					r.Priority == 100 || (r.Priority >= 9000 && r.Priority <= 9010) ||
+					r.IifName == "Meta" || strings.Contains(r.IifName, "Meta") {
+					rCopy := r
+					netlink.RuleDel(&rCopy)
+				}
+			}
+		}
+	}
+
+	for _, family := range []int{unix.AF_INET, unix.AF_INET6} {
+		for _, tableID := range []int{200, 2022} {
+			if routes, err := netlink.RouteListFiltered(family, &netlink.Route{Table: tableID}, netlink.RT_FILTER_TABLE); err == nil {
+				for _, r := range routes {
+					rCopy := r
+					netlink.RouteDel(&rCopy)
+				}
+			}
+		}
+	}
+
 	link, err := netlink.LinkByName(t.tunDevice)
 	if err == nil {
 		route := &netlink.Route{

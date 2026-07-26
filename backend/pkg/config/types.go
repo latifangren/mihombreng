@@ -1,20 +1,20 @@
 package config
 
 type Config struct {
-	Version    string           `yaml:"version"`
-	Environment string          `yaml:"environment"`
-	Server     ServerConfig     `yaml:"server"`
-	Mihomo     MihomoConfig     `yaml:"mihomo"`
-	Logging    LoggingConfig    `yaml:"logging"`
-	API        APIConfig        `yaml:"api"`
-	Backup     BackupConfig     `yaml:"backup"`
-	UnlockTest UnlockTestConfig `yaml:"unlock_test"`
+	Version    string           `yaml:"version" json:"version"`
+	Environment string          `yaml:"environment" json:"environment"`
+	Server     ServerConfig     `yaml:"server" json:"server"`
+	Mihomo     MihomoConfig     `yaml:"mihomo" json:"mihomo"`
+	Logging    LoggingConfig    `yaml:"logging" json:"logging"`
+	API        APIConfig        `yaml:"api" json:"api"`
+	Backup     BackupConfig     `yaml:"backup" json:"backup"`
+	UnlockTest UnlockTestConfig `yaml:"unlock_test" json:"unlock_test"`
 }
 
 type ServerConfig struct {
-	Port string `yaml:"port"`
-	Host string `yaml:"host"`
-	Mode string `yaml:"mode"`
+	Port string `yaml:"port" json:"port"`
+	Host string `yaml:"host" json:"host"`
+	Mode string `yaml:"mode" json:"mode"`
 }
 
 type RoutingMode string
@@ -27,12 +27,12 @@ const (
 )
 
 type RoutingConfig struct {
-	TCP            RoutingMode `yaml:"tcp"`
-	UDP            RoutingMode `yaml:"udp"`
-	TunDevice      string      `yaml:"tun_device"`
-	BypassMACs     []string    `yaml:"bypass_macs"`
-	BypassIPs      []string    `yaml:"bypass_ips"`
-	BypassIP6s     []string    `yaml:"bypass_ip6s"`
+	TCP            RoutingMode `yaml:"tcp" json:"tcp"`
+	UDP            RoutingMode `yaml:"udp" json:"udp"`
+	TunDevice      string      `yaml:"tun_device" json:"tun_device"`
+	BypassMACs     []string    `yaml:"bypass_macs" json:"bypass_macs"`
+	BypassIPs      []string    `yaml:"bypass_ips" json:"bypass_ips"`
+	BypassIP6s     []string    `yaml:"bypass_ip6s" json:"bypass_ip6s"`
 }
 
 type AutoRestartSettings struct {
@@ -46,16 +46,16 @@ type AutoRestartSettings struct {
 }
 
 type MihomoConfig struct {
-	CorePath        string              `yaml:"core_path"`
-	ConfigPath      string              `yaml:"config_path"`
-	WorkingDir      string              `yaml:"working_dir"`
-	AutoRestart     bool                `yaml:"auto_restart"`
+	CorePath        string              `yaml:"core_path" json:"core_path"`
+	ConfigPath      string              `yaml:"config_path" json:"config_path"`
+	WorkingDir      string              `yaml:"working_dir" json:"working_dir"`
+	AutoRestart     bool                `yaml:"auto_restart" json:"auto_restart"`
 	AutoRestartOpts AutoRestartSettings `yaml:"auto_restart_opts" json:"auto_restart_opts"`
-	AutoStart       bool                `yaml:"auto_start"`
-	LogFile         string              `yaml:"log_file"`
-	APIURL          string              `yaml:"api_url"`
-	APISecret       string              `yaml:"api_secret"`
-	Routing         RoutingConfig       `yaml:"routing"`
+	AutoStart       bool                `yaml:"auto_start" json:"auto_start"`
+	LogFile         string              `yaml:"log_file" json:"log_file"`
+	APIURL          string              `yaml:"api_url" json:"api_url"`
+	APISecret       string              `yaml:"api_secret" json:"api_secret"`
+	Routing         RoutingConfig       `yaml:"routing" json:"routing"`
 }
 
 type LoggingConfig struct {
@@ -67,21 +67,21 @@ type LoggingConfig struct {
 }
 
 type APIConfig struct {
-	RateLimit     int        `yaml:"rate_limit"`
-	Timeout       int        `yaml:"timeout"`
-	EnableSwagger bool       `yaml:"enable_swagger"`
-	AuthToken     string     `yaml:"auth_token"`
-	CORS          CORSConfig `yaml:"cors"`
+	RateLimit     int        `yaml:"rate_limit" json:"rate_limit"`
+	Timeout       int        `yaml:"timeout" json:"timeout"`
+	EnableSwagger bool       `yaml:"enable_swagger" json:"enable_swagger"`
+	AuthToken     string     `yaml:"auth_token" json:"auth_token"`
+	CORS          CORSConfig `yaml:"cors" json:"cors"`
 }
 
 type CORSConfig struct {
-	Enabled          bool     `yaml:"enabled"`
-	AllowedOrigins   []string `yaml:"allowed_origins"`
-	AllowedMethods   []string `yaml:"allowed_methods"`
-	AllowedHeaders   []string `yaml:"allowed_headers"`
-	ExposeHeaders    []string `yaml:"expose_headers"`
-	AllowCredentials bool     `yaml:"allow_credentials"`
-	MaxAge           int      `yaml:"max_age"`
+	Enabled          bool     `yaml:"enabled" json:"enabled"`
+	AllowedOrigins   []string `yaml:"allowed_origins" json:"allowed_origins"`
+	AllowedMethods   []string `yaml:"allowed_methods" json:"allowed_methods"`
+	AllowedHeaders   []string `yaml:"allowed_headers" json:"allowed_headers"`
+	ExposeHeaders    []string `yaml:"expose_headers" json:"expose_headers"`
+	AllowCredentials bool     `yaml:"allow_credentials" json:"allow_credentials"`
+	MaxAge           int      `yaml:"max_age" json:"max_age"`
 }
 
 type BackupConfig struct {
@@ -93,16 +93,16 @@ type BackupConfig struct {
 }
 
 type RemoteBackupTarget struct {
-	Name     string `yaml:"name"`
-	Type     string `yaml:"type"` // "webdav"
-	URL      string `yaml:"url"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	Enabled  bool   `yaml:"enabled"`
+	Name     string `yaml:"name" json:"name"`
+	Type     string `yaml:"type" json:"type"` // "webdav"
+	URL      string `yaml:"url" json:"url"`
+	Username string `yaml:"username" json:"username"`
+	Password string `yaml:"password" json:"password"`
+	Enabled  bool   `yaml:"enabled" json:"enabled"`
 }
 
 type UnlockTestConfig struct {
-	Targets []UnlockTestTargetConfig `yaml:"targets"`
+	Targets []UnlockTestTargetConfig `yaml:"targets" json:"targets"`
 }
 
 type UnlockTestTargetConfig struct {

@@ -7,7 +7,11 @@ import { useMihomoStatus } from "@/hooks/use-mihomo-status";
 import { configApi } from "@/services/api";
 import type { AppConfig, MihomoStatus } from "@/types";
 
-function deriveTunnelMode(config: AppConfig | null): TunnelMode {
+function deriveTunnelMode(config: AppConfig | null, status: MihomoStatus | null): TunnelMode {
+  if (status?.running && status?.health?.mode) {
+    return status.health.mode as TunnelMode;
+  }
+
   const tcp = (config?.mihomo?.Routing?.TCP || "").toLowerCase();
   const udp = (config?.mihomo?.Routing?.UDP || "").toLowerCase();
 
@@ -40,7 +44,10 @@ export function Shell() {
     () => (error && lastGoodStatus ? lastGoodStatus : status),
     [error, lastGoodStatus, status]
   );
-  const tunnelMode = useMemo(() => deriveTunnelMode(appConfig), [appConfig]);
+  const tunnelMode = useMemo(
+    () => deriveTunnelMode(appConfig, statusForDisplay),
+    [appConfig, statusForDisplay]
+  );
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

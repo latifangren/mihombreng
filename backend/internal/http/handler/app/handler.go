@@ -391,7 +391,13 @@ func (h *AppHandler) checkTCPReachability(id, label, host string) DiagnosticsChe
 
 func (h *AppHandler) checkOutboundGeo(id, label, target string) DiagnosticsCheck {
 	client := &http.Client{Timeout: 4 * time.Second}
-	resp, err := client.Get(target)
+	req, err := http.NewRequest("GET", target, nil)
+	if err != nil {
+		return DiagnosticsCheck{ID: id, Label: label, Category: "network", Severity: "warning", Summary: "Outbound geo lookup failed", Details: err.Error(), Action: "Verify server outbound internet access"}
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return DiagnosticsCheck{ID: id, Label: label, Category: "network", Severity: "warning", Summary: "Outbound geo lookup failed", Details: err.Error(), Action: "Verify server outbound internet access"}
 	}

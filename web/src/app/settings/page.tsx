@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Link } from "react-router-dom";
+import { cn } from "@/utils/cn";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DataState, FreshnessPill } from "@/components/ui/data-state";
@@ -226,10 +228,18 @@ export default function SettingsPage() {
       ...currentOpts,
       [field]: value,
     };
+    const autoRestart = Boolean(
+      nextOpts.on_crash ||
+        nextOpts.on_config_change ||
+        nextOpts.on_network_change ||
+        nextOpts.on_routing_failure ||
+        nextOpts.schedule_enabled
+    );
     const next: AppConfig = {
       ...config,
       mihomo: {
         ...config.mihomo,
+        AutoRestart: autoRestart,
         AutoRestartOpts: nextOpts,
       },
     };
@@ -303,6 +313,37 @@ export default function SettingsPage() {
     } catch (err) {
       setRawJsonError(err instanceof Error ? err.message : "Invalid JSON format");
       toast.error("Invalid configuration format.");
+    }
+  };
+
+  const handleFormatAndValidateRaw = () => {
+    try {
+      const parsed = JSON.parse(rawJson);
+      if (!parsed.mihomo || !parsed.logging || !parsed.server || !parsed.api) {
+        throw new Error("Missing required root properties in configuration.");
+      }
+      setRawJson(JSON.stringify(parsed, null, 2));
+      setRawJsonError(null);
+      toast.success("JSON formatted and validated successfully");
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "Invalid JSON format";
+      setRawJsonError(errMsg);
+      toast.error("Invalid configuration format: " + errMsg);
+    }
+  };
+
+  const getLogLevelAccent = (level: string) => {
+    switch (level) {
+      case "debug":
+        return "bg-purple/10 border-purple/40 text-purple-700";
+      case "info":
+        return "bg-info/10 border-info/40 text-info-700";
+      case "warn":
+        return "bg-warning/10 border-warning/40 text-warning-700";
+      case "error":
+        return "bg-danger/10 border-danger/40 text-danger-700";
+      default:
+        return undefined;
     }
   };
 
@@ -419,10 +460,22 @@ export default function SettingsPage() {
           Read-only application metadata
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <ConfigRow label="Version" value={config.version} />
-          <ConfigRow label="Environment" value={config.environment} />
-          <ConfigRow label="Core Version" value={coreVersion || "Unknown"} />
-          <div className="rounded-[8px] border border-black/70 bg-black/15 px-4 py-2.5 flex items-center justify-between">
+          <ConfigRow
+            label="Version"
+            value={config.version}
+            className="bg-purple/10 border-l-[6px] border-purple-500"
+          />
+          <ConfigRow
+            label="Environment"
+            value={config.environment}
+            className="bg-primary/10 border-l-[6px] border-primary-500"
+          />
+          <ConfigRow
+            label="Core Version"
+            value={coreVersion || "Unknown"}
+            className="bg-info/10 border-l-[6px] border-info-500"
+          />
+          <div className="rounded-[8px] border border-black/70 bg-warning/10 border-l-[6px] border-warning-500 px-4 py-2.5 flex items-center justify-between">
             <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">API Docs</span>
             <a
               href="/docs/index.html"
@@ -474,60 +527,63 @@ export default function SettingsPage() {
               checked={config.mihomo.AutoStart ?? true}
               onChange={(v) => handleMihomoChange("AutoStart", v)}
             />
-            <ConfigCheckbox
-              label="Auto Restart"
-              description="Automatically restart core process if it exits unexpectedly"
-              checked={config.mihomo.AutoRestart}
-              onChange={(v) => handleMihomoChange("AutoRestart", v)}
-            />
 
-            {config.mihomo.AutoRestart && (
-              <div className="ml-4 mt-2 space-y-2.5 border-l-2 border-primary/30 pl-4">
-                <ConfigCheckbox
-                  label="Restart on Core Crash"
-                  checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).on_crash}
-                  onChange={(v) => handleAutoRestartOptsChange("on_crash", v)}
-                />
-                <ConfigCheckbox
-                  label="Restart on Config Change"
-                  checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).on_config_change}
-                  onChange={(v) => handleAutoRestartOptsChange("on_config_change", v)}
-                />
-                <ConfigCheckbox
-                  label="Restart on Network Interface Change"
-                  checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).on_network_change}
-                  onChange={(v) => handleAutoRestartOptsChange("on_network_change", v)}
-                />
-                <ConfigCheckbox
-                  label="Restart on Routing Failure"
-                  checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).on_routing_failure}
-                  onChange={(v) => handleAutoRestartOptsChange("on_routing_failure", v)}
-                />
-                <ConfigCheckbox
-                  label="Scheduled Maintenance Restart"
-                  checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).schedule_enabled}
-                  onChange={(v) => handleAutoRestartOptsChange("schedule_enabled", v)}
-                />
+            <div className="pt-3 border-t-2 border-black/10 space-y-3">
+              <h3 className="font-heading text-xs uppercase tracking-wider text-text">Watchdog & Reboot Policies</h3>
+              <ConfigCheckbox
+                label="Restart on Core Crash"
+                description="Automatically restart process if Mihomo core crashes unexpectedly"
+                checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).on_crash}
+                onChange={(v) => handleAutoRestartOptsChange("on_crash", v)}
+                accent="border-l-danger bg-danger/5"
+              />
+              <ConfigCheckbox
+                label="Restart on Config Change"
+                description="Restart core process when configuration file changes on disk"
+                checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).on_config_change}
+                onChange={(v) => handleAutoRestartOptsChange("on_config_change", v)}
+                accent="border-l-warning bg-warning/5"
+              />
+              <ConfigCheckbox
+                label="Restart on Network Interface Change"
+                description="Restart core process when network interfaces or routing links change"
+                checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).on_network_change}
+                onChange={(v) => handleAutoRestartOptsChange("on_network_change", v)}
+                accent="border-l-info bg-info/5"
+              />
+              <ConfigCheckbox
+                label="Restart on Routing Failure"
+                description="Restart core process when outbound routing check fails repeatedly"
+                checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).on_routing_failure}
+                onChange={(v) => handleAutoRestartOptsChange("on_routing_failure", v)}
+                accent="border-l-warning bg-warning/5"
+              />
+              <ConfigCheckbox
+                label="Scheduled Maintenance Restart"
+                description="Periodically restart core process on a defined schedule"
+                checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).schedule_enabled}
+                onChange={(v) => handleAutoRestartOptsChange("schedule_enabled", v)}
+                accent="border-l-primary bg-primary/5"
+              />
 
-                {(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).schedule_enabled && (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1">
-                    <ConfigSelect
-                      label="Interval"
-                      value={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).schedule_interval}
-                      options={["daily", "weekly"]}
-                      onChange={(v) => handleAutoRestartOptsChange("schedule_interval", v)}
-                    />
-                    <ConfigInput
-                      label="Time"
-                      type="time"
-                      value={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).schedule_time}
-                      placeholder="04:00"
-                      onChange={(v) => handleAutoRestartOptsChange("schedule_time", v)}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+              {(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).schedule_enabled && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1">
+                  <ConfigSelect
+                    label="Interval"
+                    value={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).schedule_interval}
+                    options={["daily", "weekly"]}
+                    onChange={(v) => handleAutoRestartOptsChange("schedule_interval", v)}
+                  />
+                  <ConfigInput
+                    label="Time"
+                    type="time"
+                    value={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).schedule_time}
+                    placeholder="04:00"
+                    onChange={(v) => handleAutoRestartOptsChange("schedule_time", v)}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </Card>
 
@@ -552,10 +608,10 @@ export default function SettingsPage() {
           </div>
 
           <div className="mt-3 space-y-3">
-            <ConfigInput
+            <ConfigSelect
               label="TUN Device"
               value={config.mihomo.Routing.TunDevice || "Meta"}
-              placeholder="Meta"
+              options={["Meta", "tun0", "gvisor", "mixed", "system"]}
               onChange={(v) => handleRoutingChange("TunDevice", v)}
             />
             <ConfigTextArea
@@ -659,6 +715,7 @@ export default function SettingsPage() {
               label="Log Level"
               value={config.logging.level}
               options={["debug", "info", "warn", "error"]}
+              accent={getLogLevelAccent(config.logging.level)}
               onChange={(v) => handleLoggingChange("level", v)}
             />
             <ConfigInput
@@ -688,7 +745,17 @@ export default function SettingsPage() {
         </Card>
 
         {/* Card 5: Automatic Backup Policy */}
-        <Card title="Automatic Backup Policy" icon={<Database className="h-4 w-4" />}>
+        <Card
+          title="Automatic Backup Policy"
+          icon={<Database className="h-4 w-4" />}
+          action={
+            <Link to="/backup">
+              <RetroBtn size="sm" variant="ghost">
+                Manage Backups (WebDAV)
+              </RetroBtn>
+            </Link>
+          }
+        >
           <p className="mb-4 font-mono text-[10px] uppercase tracking-widest text-text-muted">
             Configuration backup schedules, retention history depth, and storage paths
           </p>
@@ -697,6 +764,7 @@ export default function SettingsPage() {
               label="Auto Backup Enabled"
               description="Automatically create configuration backups before updates and core actions"
               checked={config.backup?.auto_backup_enabled ?? true}
+              accent="border-l-primary bg-primary/5"
               onChange={(v) => handleBackupChange("auto_backup_enabled", v)}
             />
             <ConfigInput
@@ -755,7 +823,13 @@ export default function SettingsPage() {
         >
           {isExtendedOpen ? (
             <div className="space-y-4">
-              <div className="rounded-[8px] border-2 border-warning bg-warning/5 p-3.5 flex items-start gap-2.5">
+              <div
+                className="rounded-[8px] border-2 border-warning p-3.5 flex items-start gap-2.5"
+                style={{
+                  backgroundImage:
+                    "repeating-linear-gradient(-45deg, rgba(252, 186, 40, 0.15), rgba(252, 186, 40, 0.15) 10px, rgba(245, 158, 11, 0.15) 10px, rgba(245, 158, 11, 0.15) 20px)",
+                }}
+              >
                 <AlertOctagon className="h-5 w-5 text-warning flex-shrink-0" />
                 <div className="font-mono text-[11px] leading-relaxed text-text-muted">
                   <strong className="text-warning uppercase font-semibold">Warning: Danger Zone.</strong> Changing raw config keys directly bypasses normal validation checks and can break the Mihomo process lifecycle. Make sure any edited keys are correctly formatted. Click <strong>Apply Raw Config</strong> below to stage changes in memory.
@@ -770,7 +844,10 @@ export default function SettingsPage() {
               {rawJsonError && (
                 <p className="font-mono text-[10px] text-danger">Error: {rawJsonError}</p>
               )}
-              <div className="flex justify-end">
+              <div className="flex items-center justify-end gap-3">
+                <RetroBtn size="sm" variant="ghost" onClick={handleFormatAndValidateRaw}>
+                  Format JSON &amp; Validate
+                </RetroBtn>
                 <RetroBtn size="sm" variant="warning" onClick={handleRawSave}>
                   Apply Raw Config
                 </RetroBtn>
@@ -790,9 +867,22 @@ export default function SettingsPage() {
 /* ------------------------------------------------------------------ */
 /*  Form controls                                                     */
 /* ------------------------------------------------------------------ */
-function ConfigRow({ label, value }: { label: string; value: string }) {
+function ConfigRow({
+  label,
+  value,
+  className,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+}) {
   return (
-    <div className="rounded-[8px] border border-black/70 bg-black/15 px-4 py-2.5">
+    <div
+      className={cn(
+        "rounded-[8px] border border-black/70 px-4 py-2.5",
+        className ? className : "bg-black/15"
+      )}
+    >
       <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{label}</span>
       <p className="mt-0.5 font-mono text-sm text-text">{value}</p>
     </div>
@@ -830,15 +920,22 @@ function ConfigSelect({
   label,
   value,
   options,
+  accent,
   onChange,
 }: {
   label: string;
   value: string;
   options: string[];
+  accent?: string;
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[8px] border border-black/70 bg-black/15 px-4 py-2.5">
+    <div
+      className={cn(
+        "flex items-center justify-between gap-4 rounded-[8px] border border-black/70 px-4 py-2.5 transition-colors",
+        accent ? `${accent} border-l-[6px] border-black` : "bg-black/15"
+      )}
+    >
       <span className="shrink-0 font-mono text-[10px] uppercase tracking-widest text-text-muted">{label}</span>
       <select
         value={value}
@@ -857,15 +954,22 @@ function ConfigCheckbox({
   label,
   description,
   checked,
+  accent,
   onChange,
 }: {
   label: string;
   description?: string;
   checked: boolean;
+  accent?: string;
   onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-[8px] border border-black/70 bg-black/15 px-4 py-2.5">
+    <div
+      className={cn(
+        "flex items-center justify-between gap-4 rounded-[8px] border border-black/70 px-4 py-2.5 transition-colors",
+        checked && accent ? `${accent} border-l-[6px] border-black` : "bg-black/15"
+      )}
+    >
       <div className="min-w-0">
         <span className="font-mono text-[10px] uppercase tracking-widest text-text-muted">{label}</span>
         {description && (

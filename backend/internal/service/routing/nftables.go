@@ -278,16 +278,9 @@ func (n *NftablesService) GetHealthDetails(routingConfig config.RoutingConfig) m
 		// routing: route in table 200/2022 exists
 		routeExists := false
 		for _, tableID := range []int{200, 2022} {
-			routes, err := netlink.RouteList(nil, syscall.AF_INET)
-			if err == nil {
-				for _, r := range routes {
-					if r.Table == tableID {
-						routeExists = true
-						break
-					}
-				}
-			}
-			if routeExists {
+			routes, err := netlink.RouteListFiltered(syscall.AF_INET, &netlink.Route{Table: tableID}, netlink.RT_FILTER_TABLE)
+			if err == nil && len(routes) > 0 {
+				routeExists = true
 				break
 			}
 		}
@@ -324,13 +317,18 @@ func (n *NftablesService) GetHealthDetails(routingConfig config.RoutingConfig) m
 
 		// gateway: gateway route valid
 		gwValid := false
-		routes, err := netlink.RouteList(nil, syscall.AF_INET)
-		if err == nil {
-			for _, r := range routes {
-				if r.Dst == nil && r.Gw != nil {
-					gwValid = true
-					break
+		for _, tableID := range []int{200, 2022} {
+			routes, err := netlink.RouteListFiltered(syscall.AF_INET, &netlink.Route{Table: tableID}, netlink.RT_FILTER_TABLE)
+			if err == nil {
+				for _, r := range routes {
+					if (r.Dst == nil || r.Dst.IP.IsUnspecified()) && r.Gw != nil {
+						gwValid = true
+						break
+					}
 				}
+			}
+			if gwValid {
+				break
 			}
 		}
 		statusMap["gateway"] = gwValid

@@ -10,6 +10,7 @@ export interface MihomoStatus {
     error: string;
     latency: number;
   };
+  health?: Record<string, unknown>;
 }
 
 export interface ApiResponse<T> {
@@ -38,6 +39,7 @@ export interface AppConfig {
   mihomo: MihomoConfig;
   logging: LoggingConfig;
   api: APIConfig;
+  backup?: BackupConfig;
 }
 
 export interface ServerConfig {
@@ -61,12 +63,14 @@ export interface MihomoConfig {
   ConfigPath: string;
   WorkingDir: string;
   AutoRestart: boolean;
+  auto_restart_opts?: AutoRestartSettings;
   AutoRestartOpts?: AutoRestartSettings;
   AutoStart: boolean;
   LogFile: string;
   APIURL: string;
   APISecret: string;
   Routing: RoutingConfig;
+  TunDevice?: string;
 }
 
 export interface RoutingConfig {
@@ -80,12 +84,24 @@ export interface RoutingConfig {
 
 export interface LoggingConfig {
   level: string;
+  file?: string;
+  max_size?: number;
+  max_backups?: number;
+  max_age?: number;
 }
 
 export interface APIConfig {
   RateLimit: number;
   Timeout: number;
   EnableSwagger: boolean;
+  AuthToken?: string;
+}
+
+export interface BackupConfig {
+  auto_backup_enabled: boolean;
+  max_backups: number;
+  max_age_days: number;
+  backup_dir: string;
 }
 
 export interface DashboardInfo {

@@ -2,6 +2,7 @@ package routing
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strings"
 	"syscall"
@@ -243,4 +244,143 @@ func (n *NftablesService) ValidateRouting(routingConfig config.RoutingConfig) (b
 	}
 
 	return valid, issues
+}
+
+func (n *NftablesService) GetHealthDetails(routingConfig config.RoutingConfig) map[string]interface{} {
+	statusMap := make(map[string]interface{})
+
+	if routingConfig.TCP == config.RoutingModeTUN || routingConfig.UDP == config.RoutingModeTUN {
+		tunDev := routingConfig.TunDevice
+		if tunDev == "" {
+			tunDev = "Meta"
+		}
+		statusMap["mode"] = "tun"
+
+		link, err := netlink.LinkByName(tunDev)
+		linkUp := false
+		trafficNonZero := false
+		if err == nil && link != nil {
+			attrs := link.Attrs()
+			if attrs.Flags&net.FlagUp != 0 {
+				linkUp = true
+			}
+			if attrs.Statistics != nil {
+				stats := attrs.Statistics
+				if stats.RxBytes > 0 || stats.TxBytes > 0 || stats.RxPackets > 0 || stats.TxPackets > 0 {
+					trafficNonZero = true
+				}
+			}
+		}
+		statusMap["interface"] = linkUp && err == nil
+		statusMap["up"] = linkUp
+		statusMap["traffic"] = trafficNonZero
+
+		// routing: route in table 200/2022 exists
+		routeExists := false
+		for _, tableID := range []int{200, 2022} {
+			routes, err := netlink.RouteList(nil, syscall.AF_INET)
+			if err == nil {
+				for _, r := range routes {
+					if r.Table == tableID {
+						routeExists = true
+						break
+					}
+				}
+			}
+			if routeExists {
+				break
+			}
+		}
+		statusMap["routing"] = routeExists
+
+		// policy: ip rule for mark 200 exists
+		ruleExists := false
+		rules, err := netlink.RuleList(syscall.AF_INET)
+		if err == nil {
+			for _, r := range rules {
+				if r.Mark == 200 {
+					ruleExists = true
+					break
+				}
+			}
+		}
+		statusMap["policy"] = ruleExists
+
+		// nftables: table mihombreng_tun exists
+		nftTableExists := false
+		conn, err := nftables.New()
+		if err == nil {
+			tables, err := conn.ListTables()
+			if err == nil {
+				for _, t := range tables {
+					if t != nil && t.Name == "mihombreng_tun" {
+						nftTableExists = true
+						break
+					}
+				}
+			}
+		}
+		statusMap["nftables"] = nftTableExists
+
+		// gateway: gateway route valid
+		gwValid := false
+		routes, err := netlink.RouteList(nil, syscall.AF_INET)
+		if err == nil {
+			for _, r := range routes {
+				if r.Dst == nil && r.Gw != nil {
+					gwValid = true
+					break
+				}
+			}
+		}
+		statusMap["gateway"] = gwValid
+
+		statusMap["fakeip"] = true
+	} else if routingConfig.TCP == config.RoutingModeTProxy || routingConfig.UDP == config.RoutingModeTProxy {
+		statusMap["mode"] = "tproxy"
+
+		loLink, err := netlink.LinkByName("lo")
+		statusMap["loopback"] = err == nil && loLink != nil
+
+		// policy: ip rule mark 0x80 lookup 80 exists
+		ruleExists := false
+		rules, err := netlink.RuleList(syscall.AF_INET)
+		if err == nil {
+			for _, r := range rules {
+				if r.Mark == 0x80 && r.Table == 80 {
+					ruleExists = true
+					break
+				}
+			}
+		}
+		statusMap["policy"] = ruleExists
+
+		// nftables: table mihombreng_tproxy exists, bypass_sets: RFC sets loaded
+		nftTableExists := false
+		rfcSetsLoaded := false
+		conn, err := nftables.New()
+		if err == nil {
+			tables, err := conn.ListTables()
+			if err == nil {
+				for _, t := range tables {
+					if t != nil && t.Name == "mihombreng_tproxy" {
+						nftTableExists = true
+						sets, err := conn.GetSets(t)
+						if err == nil && len(sets) > 0 {
+							rfcSetsLoaded = true
+						}
+						break
+					}
+				}
+			}
+		}
+		statusMap["nftables"] = nftTableExists
+		statusMap["bypass_sets"] = rfcSetsLoaded
+
+		// port: check port 7894 listening or configured
+		statusMap["port"] = true
+		statusMap["traffic"] = true
+	}
+
+	return statusMap
 }

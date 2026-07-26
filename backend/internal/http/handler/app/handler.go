@@ -113,10 +113,9 @@ func (h *AppHandler) GetConfig(c *gin.Context) {
 			"environment": h.config.Environment,
 			"server":      h.config.Server,
 			"mihomo":      h.mihomoService.GetAppConfig(),
-			"logging": gin.H{
-				"level": h.config.Logging.Level,
-			},
-			"api": h.config.API,
+			"logging":     h.config.Logging,
+			"api":         h.config.API,
+			"backup":      h.config.Backup,
 		},
 	})
 }
@@ -606,10 +605,11 @@ func parseInt(s string) (int, error) {
 // @Router /app/config [put]
 func (h *AppHandler) UpdateConfig(c *gin.Context) {
 	var req struct {
-		Mihomo  *config.MihomoConfig `json:"mihomo"`
-		Logging *struct {
-			Level string `json:"level"`
-		} `json:"logging"`
+		Server  *config.ServerConfig  `json:"server"`
+		Mihomo  *config.MihomoConfig  `json:"mihomo"`
+		Logging *config.LoggingConfig `json:"logging"`
+		API     *config.APIConfig     `json:"api"`
+		Backup  *config.BackupConfig  `json:"backup"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -623,11 +623,17 @@ func (h *AppHandler) UpdateConfig(c *gin.Context) {
 	needsRestart := false
 	previousRouting := h.config.Mihomo.Routing
 
+	if req.Server != nil {
+		h.config.Server = *req.Server
+	}
+
 	if req.Mihomo != nil {
 		h.config.Mihomo.CorePath = req.Mihomo.CorePath
 		h.config.Mihomo.ConfigPath = req.Mihomo.ConfigPath
 		h.config.Mihomo.WorkingDir = req.Mihomo.WorkingDir
 		h.config.Mihomo.AutoRestart = req.Mihomo.AutoRestart
+		h.config.Mihomo.AutoRestartOpts = req.Mihomo.AutoRestartOpts
+		h.config.Mihomo.AutoStart = req.Mihomo.AutoStart
 		h.config.Mihomo.LogFile = req.Mihomo.LogFile
 		h.config.Mihomo.APIURL = req.Mihomo.APIURL
 		h.config.Mihomo.APISecret = req.Mihomo.APISecret
@@ -635,8 +641,39 @@ func (h *AppHandler) UpdateConfig(c *gin.Context) {
 		needsRestart = req.Mihomo.AutoRestart && h.mihomoService.GetStatus() == "running"
 	}
 
-	if req.Logging != nil && req.Logging.Level != "" {
-		h.config.Logging.Level = req.Logging.Level
+	if req.Logging != nil {
+		if req.Logging.Level != "" {
+			h.config.Logging.Level = req.Logging.Level
+		}
+		if req.Logging.File != "" {
+			h.config.Logging.File = req.Logging.File
+		}
+		if req.Logging.MaxSize > 0 {
+			h.config.Logging.MaxSize = req.Logging.MaxSize
+		}
+		if req.Logging.MaxBackups > 0 {
+			h.config.Logging.MaxBackups = req.Logging.MaxBackups
+		}
+		if req.Logging.MaxAge > 0 {
+			h.config.Logging.MaxAge = req.Logging.MaxAge
+		}
+	}
+
+	if req.API != nil {
+		h.config.API = *req.API
+	}
+
+	if req.Backup != nil {
+		h.config.Backup.AutoBackupEnabled = req.Backup.AutoBackupEnabled
+		if req.Backup.MaxBackups > 0 {
+			h.config.Backup.MaxBackups = req.Backup.MaxBackups
+		}
+		if req.Backup.MaxAgeDays > 0 {
+			h.config.Backup.MaxAgeDays = req.Backup.MaxAgeDays
+		}
+		if req.Backup.BackupDir != "" {
+			h.config.Backup.BackupDir = req.Backup.BackupDir
+		}
 	}
 
 	if err := h.config.Save(h.configPath); err != nil {

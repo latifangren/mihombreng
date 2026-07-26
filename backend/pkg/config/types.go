@@ -59,11 +59,11 @@ type MihomoConfig struct {
 }
 
 type LoggingConfig struct {
-	Level      string `yaml:"level"`
-	File       string `yaml:"file"`
-	MaxSize    int    `yaml:"max_size"`
-	MaxBackups int    `yaml:"max_backups"`
-	MaxAge     int    `yaml:"max_age"`
+	Level      string `yaml:"level" json:"level"`
+	File       string `yaml:"file" json:"file"`
+	MaxSize    int    `yaml:"max_size" json:"max_size"`
+	MaxBackups int    `yaml:"max_backups" json:"max_backups"`
+	MaxAge     int    `yaml:"max_age" json:"max_age"`
 }
 
 type APIConfig struct {
@@ -85,11 +85,11 @@ type CORSConfig struct {
 }
 
 type BackupConfig struct {
-	AutoBackupEnabled bool                 `yaml:"auto_backup_enabled"`
-	MaxBackups        int                  `yaml:"max_backups"`
-	MaxAgeDays        int                  `yaml:"max_age_days"`
-	BackupDir         string               `yaml:"backup_dir"`
-	Targets           []RemoteBackupTarget `yaml:"targets"`
+	AutoBackupEnabled bool                 `yaml:"auto_backup_enabled" json:"auto_backup_enabled"`
+	MaxBackups        int                  `yaml:"max_backups" json:"max_backups"`
+	MaxAgeDays        int                  `yaml:"max_age_days" json:"max_age_days"`
+	BackupDir         string               `yaml:"backup_dir" json:"backup_dir"`
+	Targets           []RemoteBackupTarget `yaml:"targets" json:"targets"`
 }
 
 type RemoteBackupTarget struct {

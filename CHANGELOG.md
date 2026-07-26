@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Granular Health Check & Diagnostics**: Added kernel-level health check engine for TUN and TPROXY routing modes (`/mihomo/status` API and `/diagnostics` UI).
+- **Full WebUI Settings Management**: Exposed all `mihombreng.yaml` configuration parameters in `/settings` (boot behavior `auto_start`, server port/host, API security auth token, log rotation, and backup policies).
 - **Expanded OpenWrt Smoke Build Testing Matrix**: Extended target builds in GHA test runners to compile the `aarch64_generic` architecture under both `openwrt-24.10` (.ipk) and `openwrt-25.12` (.apk) target versions, verifying target builds for STB devices on push.
 - **Rust Subscription Converter & C-ABI FFI**: Introduced a high-performance Rust crate (`crates/mihombreng-converter`) for SIMD-accelerated Base64 payload decoding and zero-copy proxy link extraction (VMess, VLess, Trojan, Shadowsocks). Integrated with Go via CGO FFI bindings (`ParseSubscriptionRust`) with an automatic native Go fallback when CGO or Rust library is disabled.
 - **Interactive YAML Config Auto-Correction**: Implemented backend AST-based auto-correction endpoint (`POST /api/v1/mihomo/configs/autofix`) to inject missing mandatory Mihomo system keys (`external-controller`, `secret`, `mode`) while preserving comments and custom user rules. Added an "Auto-Fix & Format" button in the Monaco Editor toolbar alongside an interactive side-by-side Diff Preview modal for reviewing proposed fixes before applying.

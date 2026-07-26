@@ -621,6 +621,10 @@ func (s *MihomoService) ValidateRouting(routingConfig config.RoutingConfig) (boo
 	return s.nftablesService.ValidateRouting(routingConfig)
 }
 
+func (s *MihomoService) GetDetailedHealth() map[string]interface{} {
+	return s.nftablesService.GetHealthDetails(s.appConfig.Mihomo.Routing)
+}
+
 func (s *MihomoService) GetRoutingHealth() (bool, string, int64) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

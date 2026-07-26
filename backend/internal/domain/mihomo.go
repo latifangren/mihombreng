@@ -17,4 +17,5 @@ type MihomoService interface {
 	ClearLogs() error
 	ValidateRouting(routingConfig config.RoutingConfig) (bool, []string)
 	GetRoutingHealth() (bool, string, int64)
+	GetDetailedHealth() map[string]interface{}
 }

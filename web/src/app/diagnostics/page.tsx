@@ -4,9 +4,9 @@ import { Card } from "@/components/ui/card";
 import { DataState, FreshnessPill } from "@/components/ui/data-state";
 import { RetroBtn } from "@/components/ui/retro-btn";
 import { Skeleton } from "@/components/ui/skeleton";
-import { configApi } from "@/services/api";
-import type { DiagnosticsCheck } from "@/types";
-import { Activity, CheckCircle2, CircleAlert, Copy, RefreshCcw, ShieldCheck, XCircle } from "lucide-react";
+import { configApi, mihomoApi } from "@/services/api";
+import type { DiagnosticsCheck, MihomoStatus } from "@/types";
+import { Activity, CheckCircle2, CircleAlert, Copy, Globe, RefreshCcw, ShieldCheck, XCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 const severityStyle: Record<string, { icon: ReactNode; badge: string; panel: string }> = {
@@ -33,6 +33,20 @@ const categoryLabel: Record<string, string> = {
   dns: "DNS",
   filesystem: "Filesystem",
 };
+
+const healthMatrixCatalog: Array<{ key: string; label: string }> = [
+  { key: "interface", label: "Interface Link" },
+  { key: "up", label: "Interface State (Up)" },
+  { key: "routing", label: "Routing Table (200/2022)" },
+  { key: "policy", label: "IP Policy Rules (Mark 200/0x80)" },
+  { key: "nftables", label: "Nftables Ruleset" },
+  { key: "traffic", label: "Traffic Statistics" },
+  { key: "gateway", label: "Gateway Route" },
+  { key: "fakeip", label: "FakeIP Subnet" },
+  { key: "loopback", label: "Loopback Interface (lo)" },
+  { key: "port", label: "Interception Port" },
+  { key: "bypass_sets", label: "RFC Bypass Subnet Sets" },
+];
 
 async function writeClipboardText(text: string) {
   if (navigator.clipboard?.writeText) {
@@ -84,6 +98,7 @@ const recoveryTargets: Record<string, string> = {
 
 export default function DiagnosticsPage() {
   const [checks, setChecks] = useState<DiagnosticsCheck[]>([]);
+  const [mihomoStatus, setMihomoStatus] = useState<MihomoStatus | null>(null);
   const [generatedAt, setGeneratedAt] = useState("");
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,9 +125,13 @@ export default function DiagnosticsPage() {
     if (mode === "init") setLoading(true);
     if (mode === "refresh") setRefreshing(true);
     try {
-      const res = await configApi.getDiagnostics();
+      const [res, statusRes] = await Promise.all([
+        configApi.getDiagnostics(),
+        mihomoApi.getStatus().catch(() => null),
+      ]);
       setChecks(res.checks || []);
       setGeneratedAt(res.generated_at || "");
+      setMihomoStatus(statusRes);
       setLastLoadedAt(new Date());
       setError(null);
     } catch (err) {
@@ -167,6 +186,9 @@ export default function DiagnosticsPage() {
       toast.error(`Copy failed: ${message}`);
     }
   };
+
+  const healthData = mihomoStatus?.health || {};
+  const activeMode = (healthData.mode || (mihomoStatus?.routing?.active ? "Active" : "Disabled")) as string;
 
   return (
     <div className="space-y-6">
@@ -226,6 +248,71 @@ export default function DiagnosticsPage() {
           <div className="font-heading text-3xl text-danger">{loading ? "—" : summary.failure}</div>
         </Card>
       </div>
+
+      {/* ── Interception Mode Health Matrix Card ── */}
+      <Card
+        title="Interception Mode Health Matrix"
+        icon={<Globe className="h-4 w-4 text-primary" />}
+        action={
+          <span className="inline-flex items-center gap-1.5 rounded-full border-2 border-black bg-background px-3 py-1 font-mono text-[11px] uppercase tracking-wider text-text">
+            Mode: <strong className="text-primary">{String(activeMode).toUpperCase()}</strong>
+          </span>
+        }
+      >
+        <p className="mb-4 font-mono text-[10px] uppercase tracking-widest text-text-muted">
+          Kernel &amp; networking component status indicators for active TUN / TPROXY interception rules
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {healthMatrixCatalog.map((item) => {
+            const val = healthData[item.key];
+            const isOk = val === true;
+            const isFail = val === false;
+            const isNa = val === undefined || val === null;
+
+            return (
+              <div
+                key={item.key}
+                className={`flex items-center justify-between gap-3 rounded-[8px] border-2 border-black p-3 ${
+                  isOk
+                    ? "bg-primary/10 border-primary/40 text-primary"
+                    : isFail
+                    ? "bg-danger/10 border-danger/40 text-danger"
+                    : "bg-black/10 border-black/20 text-text-muted"
+                }`}
+              >
+                <div className="min-w-0">
+                  <span className="font-heading text-xs uppercase tracking-wide block truncate">
+                    {item.label}
+                  </span>
+                  <span className="font-mono text-[9px] uppercase tracking-widest opacity-75">
+                    {item.key}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 font-mono text-xs uppercase tracking-wider font-bold">
+                  {isOk && (
+                    <>
+                      <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                      <span>🟢 OK</span>
+                    </>
+                  )}
+                  {isFail && (
+                    <>
+                      <span className="h-2 w-2 rounded-full bg-danger" />
+                      <span>🔴 FAIL</span>
+                    </>
+                  )}
+                  {isNa && (
+                    <>
+                      <span className="h-2 w-2 rounded-full bg-warning/50" />
+                      <span className="text-text-muted">🟡 N/A</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
 
       <Card
         title="Latest run"

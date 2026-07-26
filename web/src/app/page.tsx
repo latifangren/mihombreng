@@ -184,25 +184,8 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-3">
                   <span className={`h-3 w-3 rounded-full ${postureDot}`} />
                   <p className={`font-heading text-4xl uppercase tracking-wide ${postureTone}`}>{posture}</p>
-        </div>
-      </div>
-
-      {status.routing?.active && !status.routing.healthy && (
-        <div className="rounded-[12px] border-2 border-danger bg-danger/10 p-4 shadow-[4px_4px_0_#000] flex items-start gap-4 transition-all">
-          <CircleAlert className="h-6 w-6 text-danger shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <h3 className="font-heading text-sm uppercase tracking-wide text-danger">Routing Block Detected</h3>
-            <p className="font-mono text-xs text-text leading-relaxed">
-              The Transparent Proxy validation loop detected a network blockage. Active connections through your transparent proxy routing mode may fail.
-            </p>
-            {status.routing.error && (
-              <p className="mt-1.5 font-mono text-[10px] text-text-muted bg-black/10 px-2 py-1 rounded inline-block border border-black/5">
-                Error details: {status.routing.error}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
+                </div>
+              </div>
               {status.version && (
                 <div className="pb-1">
                   <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">Version</p>
@@ -222,6 +205,23 @@ export default function DashboardPage() {
             Refresh
           </RetroBtn>
         </div>
+
+        {status.routing?.active && !status.routing.healthy && (
+          <div className="mt-4 rounded-[12px] border-2 border-danger bg-danger/10 p-4 shadow-[4px_4px_0_#000] flex items-start gap-4 transition-all">
+            <CircleAlert className="h-6 w-6 text-danger shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h3 className="font-heading text-sm uppercase tracking-wide text-danger">Routing Block Detected</h3>
+              <p className="font-mono text-xs text-text leading-relaxed">
+                The Transparent Proxy validation loop detected a network blockage. Active connections through your transparent proxy routing mode may fail.
+              </p>
+              {status.routing.error && (
+                <p className="mt-1.5 font-mono text-[10px] text-text-muted bg-black/10 px-2 py-1 rounded inline-block border border-black/5">
+                  Error details: {status.routing.error}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <UpdateWarningBanner update={updateCheck} />
@@ -370,6 +370,51 @@ export default function DashboardPage() {
                   Loading router settings...
                 </div>
               )}
+
+              {/* Health Component Mini Status Pills */}
+              <div className="space-y-2 pt-3 border-t-2 border-black/10">
+                <div className="flex items-center justify-between">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                    Active Health Components
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/diagnostics")}
+                    className="font-mono text-[10px] text-primary hover:underline flex items-center gap-1"
+                  >
+                    View Diagnostics Matrix &rarr;
+                  </button>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px]">
+                  {status.health ? (
+                    Object.entries(status.health)
+                      .filter(([, val]) => typeof val === "boolean")
+                      .map(([key, val]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => navigate("/diagnostics")}
+                          className={`inline-flex items-center gap-1 rounded-full border border-black/20 px-2 py-0.5 ${
+                            val ? "bg-primary/10 text-primary" : "bg-danger/10 text-danger"
+                          }`}
+                        >
+                          <span>{val ? "🟢" : "🔴"}</span>
+                          <span className="capitalize">{key}</span>
+                        </button>
+                      ))
+                  ) : (
+                    <div className="flex items-center gap-2 font-mono text-[10px] text-text-muted">
+                      <span>⚪ Interface</span>
+                      <span>|</span>
+                      <span>⚪ Routing</span>
+                      <span>|</span>
+                      <span>⚪ nftables</span>
+                      <span>|</span>
+                      <span>⚪ Traffic</span>
+                    </div>
+                  )}
+                </div>
+              </div>
 
               {/* Quick Maintenance */}
               <div className="space-y-2.5 pt-3 border-t-2 border-black/10">

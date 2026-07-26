@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -196,6 +197,7 @@ func (h *MihomoHandler) GetStatus(c *gin.Context) {
 				"error":   checkErr,
 				"latency": latency,
 			},
+			"health": h.mihomoService.GetDetailedHealth(),
 		},
 	})
 }
@@ -1002,9 +1004,16 @@ func (h *MihomoHandler) GetDashboardInfo(c *gin.Context) {
 
 	port := "9090"
 	if h.appConfig.Mihomo.APIURL != "" {
-		parts := strings.Split(h.appConfig.Mihomo.APIURL, ":")
-		if len(parts) >= 3 {
-			port = parts[2]
+		parsedURL, err := url.Parse(h.appConfig.Mihomo.APIURL)
+		if err == nil {
+			host := parsedURL.Host
+			if host == "" && parsedURL.Path != "" {
+				host = parsedURL.Path
+			}
+			_, parsedPort, err := net.SplitHostPort(host)
+			if err == nil && parsedPort != "" {
+				port = parsedPort
+			}
 		}
 	}
 

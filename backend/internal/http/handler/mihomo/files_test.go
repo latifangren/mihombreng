@@ -29,6 +29,7 @@ func (m *MockMihomoService) GetLogs(lines int) ([]string, error)                
 func (m *MockMihomoService) ClearLogs() error                                        { return nil }
 func (m *MockMihomoService) ValidateRouting(r config.RoutingConfig) (bool, []string) { return true, nil }
 func (m *MockMihomoService) GetRoutingHealth() (bool, string, int64)                 { return true, "", 0 }
+func (m *MockMihomoService) GetDetailedHealth() map[string]interface{}               { return nil }
 
 func TestGetFiles(t *testing.T) {
 	gin.SetMode(gin.TestMode)

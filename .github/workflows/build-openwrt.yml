@@ -27,8 +27,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [x86_64]
-        branch: [openwrt-24.10]
+        arch: [x86_64, aarch64_generic]
+        branch: [openwrt-24.10, openwrt-25.12]
 
     steps:
       - name: Checkout repository
@@ -68,8 +68,10 @@ jobs:
       - name: Organize Artifacts
         run: |
           mkdir -p output
-          find bin/packages -name "mihombreng_*.ipk" -exec cp {} output/ \;
+          find bin/packages -name "mihombreng_*.ipk" -exec cp {} output/ \; 2>/dev/null || true
           find bin/packages -name "luci-app-mihombreng_*.ipk" -exec cp {} output/ \; 2>/dev/null || true
+          find bin/packages -name "mihombreng-*.apk" -exec cp {} output/ \; 2>/dev/null || true
+          find bin/packages -name "luci-app-mihombreng-*.apk" -exec cp {} output/ \; 2>/dev/null || true
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

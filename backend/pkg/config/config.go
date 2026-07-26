@@ -82,7 +82,16 @@ func createDefaultConfig(path string) (*Config, error) {
 			CorePath:    "/usr/bin/mihomo",
 			ConfigPath:  mihomoConfigPath,
 			WorkingDir:  workingDir,
-			AutoRestart: true,
+			AutoRestart: false,
+			AutoRestartOpts: AutoRestartSettings{
+				OnCrash:          false,
+				OnConfigChange:   false,
+				OnNetworkChange:  false,
+				OnRoutingFailure: false,
+				ScheduleEnabled:  false,
+				ScheduleInterval: "daily",
+				ScheduleTime:     "04:00",
+			},
 			Routing: RoutingConfig{
 				TunDevice:  "Meta",
 				BypassMACs: make([]string, 0),

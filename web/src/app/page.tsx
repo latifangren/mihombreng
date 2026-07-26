@@ -25,6 +25,7 @@ import {
   MemoryStick as Memory,
   Network,
   RefreshCcw,
+  RotateCw,
   Shield,
   Sliders,
   TerminalSquare,
@@ -87,6 +88,21 @@ export default function DashboardPage() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [updateCheck, setUpdateCheck] = useState<AppUpdateCheck | null>(null);
   const [updatingRouting, setUpdatingRouting] = useState(false);
+  const [recoveringTarget, setRecoveringTarget] = useState<string | null>(null);
+
+  const handleRecover = async (target: string, label: string) => {
+    setRecoveringTarget(target);
+    const loadingToast = toast.loading(`Executing ${label}...`);
+    try {
+      await configApi.recoverDiagnostics(target);
+      toast.success(`${label} completed successfully`, { id: loadingToast });
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : `Failed to execute ${label}`, { id: loadingToast });
+    } finally {
+      setRecoveringTarget(null);
+    }
+  };
 
   useEffect(() => {
     configApi.getConfig().then(setConfig).catch(console.error);
@@ -354,6 +370,45 @@ export default function DashboardPage() {
                   Loading router settings...
                 </div>
               )}
+
+              {/* Quick Maintenance */}
+              <div className="space-y-2.5 pt-3 border-t-2 border-black/10">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-text-muted">
+                  Quick Maintenance
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <RetroBtn
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void handleRecover("firewall", "Reload Firewall")}
+                    disabled={recoveringTarget !== null}
+                    loading={recoveringTarget === "firewall"}
+                  >
+                    <Shield className="mr-1.5 inline-block h-3.5 w-3.5" />
+                    Reload Firewall
+                  </RetroBtn>
+                  <RetroBtn
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void handleRecover("dns", "Flush DNS Cache")}
+                    disabled={recoveringTarget !== null}
+                    loading={recoveringTarget === "dns"}
+                  >
+                    <RefreshCcw className="mr-1.5 inline-block h-3.5 w-3.5" />
+                    Flush DNS Cache
+                  </RetroBtn>
+                  <RetroBtn
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void handleRecover("mihomo", "Restart Core")}
+                    disabled={recoveringTarget !== null}
+                    loading={recoveringTarget === "mihomo"}
+                  >
+                    <RotateCw className="mr-1.5 inline-block h-3.5 w-3.5" />
+                    Restart Core
+                  </RetroBtn>
+                </div>
+              </div>
             </div>
           </Card>
 

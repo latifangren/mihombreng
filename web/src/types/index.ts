@@ -46,11 +46,22 @@ export interface ServerConfig {
   Mode: string;
 }
 
+export interface AutoRestartSettings {
+  on_crash: boolean;
+  on_config_change: boolean;
+  on_network_change: boolean;
+  on_routing_failure: boolean;
+  schedule_enabled: boolean;
+  schedule_interval: string;
+  schedule_time: string;
+}
+
 export interface MihomoConfig {
   CorePath: string;
   ConfigPath: string;
   WorkingDir: string;
   AutoRestart: boolean;
+  AutoRestartOpts?: AutoRestartSettings;
   AutoStart: boolean;
   LogFile: string;
   APIURL: string;

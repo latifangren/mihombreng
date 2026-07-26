@@ -35,16 +35,27 @@ type RoutingConfig struct {
 	BypassIP6s     []string    `yaml:"bypass_ip6s"`
 }
 
+type AutoRestartSettings struct {
+	OnCrash          bool   `yaml:"on_crash" json:"on_crash"`
+	OnConfigChange   bool   `yaml:"on_config_change" json:"on_config_change"`
+	OnNetworkChange  bool   `yaml:"on_network_change" json:"on_network_change"`
+	OnRoutingFailure bool   `yaml:"on_routing_failure" json:"on_routing_failure"`
+	ScheduleEnabled  bool   `yaml:"schedule_enabled" json:"schedule_enabled"`
+	ScheduleInterval string `yaml:"schedule_interval" json:"schedule_interval"` // "daily", "weekly"
+	ScheduleTime     string `yaml:"schedule_time" json:"schedule_time"`         // e.g., "04:00"
+}
+
 type MihomoConfig struct {
-	CorePath    string        `yaml:"core_path"`
-	ConfigPath  string        `yaml:"config_path"`
-	WorkingDir  string        `yaml:"working_dir"`
-	AutoRestart bool          `yaml:"auto_restart"`
-	AutoStart   bool          `yaml:"auto_start"`
-	LogFile     string        `yaml:"log_file"`
-	APIURL      string        `yaml:"api_url"`
-	APISecret   string        `yaml:"api_secret"`
-	Routing     RoutingConfig `yaml:"routing"`
+	CorePath        string              `yaml:"core_path"`
+	ConfigPath      string              `yaml:"config_path"`
+	WorkingDir      string              `yaml:"working_dir"`
+	AutoRestart     bool                `yaml:"auto_restart"`
+	AutoRestartOpts AutoRestartSettings `yaml:"auto_restart_opts" json:"auto_restart_opts"`
+	AutoStart       bool                `yaml:"auto_start"`
+	LogFile         string              `yaml:"log_file"`
+	APIURL          string              `yaml:"api_url"`
+	APISecret       string              `yaml:"api_secret"`
+	Routing         RoutingConfig       `yaml:"routing"`
 }
 
 type LoggingConfig struct {

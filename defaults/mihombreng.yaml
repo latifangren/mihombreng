@@ -8,7 +8,15 @@ mihomo:
   core_path: /usr/bin/mihomo
   config_path: /etc/mihombreng/configs/config.yaml
   working_dir: /etc/mihombreng
-  auto_restart: true
+  auto_restart: false
+  auto_restart_opts:
+    on_crash: false
+    on_config_change: false
+    on_network_change: false
+    on_routing_failure: false
+    schedule_enabled: false
+    schedule_interval: daily
+    schedule_time: "04:00"
   auto_start: true
   log_file: /var/log/mihomo.log
   routing:

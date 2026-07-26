@@ -26,11 +26,14 @@ type MihomoService struct {
 	nftablesService domain.NftablesService
 	startTime       time.Time
 
-	mu               sync.RWMutex
-	routingHealthy   bool
-	routingError     string
-	routingLatency   int64
-	routingCheckStop chan struct{}
+	mu                       sync.RWMutex
+	routingHealthy           bool
+	routingError             string
+	routingLatency           int64
+	routingCheckStop         chan struct{}
+	cmd                      *exec.Cmd
+	isStopping               bool
+	lastScheduledRestartDate string
 }
 
 func NewMihomoService(appConfig *config.Config, configPath string, nftablesService domain.NftablesService) *MihomoService {
@@ -116,6 +119,32 @@ func (s *MihomoService) killExistingMihomo() error {
 	return nil
 }
 
+func (s *MihomoService) handleUnexpectedExit(cmd *exec.Cmd, err error) {
+	s.mu.Lock()
+	if s.isStopping {
+		s.mu.Unlock()
+		return
+	}
+	s.mu.Unlock()
+
+	logger.Warnf("Mihomo process exited unexpectedly: %v", err)
+	pidFile := filepath.Join(s.appConfig.Mihomo.WorkingDir, "mihomo.pid")
+	os.Remove(pidFile)
+
+	if s.appConfig.Mihomo.AutoRestart && s.appConfig.Mihomo.AutoRestartOpts.OnCrash {
+		logger.Info("AutoRestart on crash enabled; restarting mihomo in 5 seconds...")
+		time.Sleep(5 * time.Second)
+		s.mu.Lock()
+		stopping := s.isStopping
+		s.mu.Unlock()
+		if !stopping {
+			if restartErr := s.Restart(); restartErr != nil {
+				logger.Errorf("AutoRestart on crash failed: %v", restartErr)
+			}
+		}
+	}
+}
+
 func (s *MihomoService) Start() error {
 	logger.Info("Starting mihomo service")
 
@@ -165,7 +194,14 @@ func (s *MihomoService) Start() error {
 
 	s.mu.Lock()
 	s.startTime = time.Now()
+	s.cmd = cmd
+	s.isStopping = false
 	s.mu.Unlock()
+
+	go func(c *exec.Cmd) {
+		err := c.Wait()
+		s.handleUnexpectedExit(c, err)
+	}(cmd)
 
 	pidFile := filepath.Join(s.appConfig.Mihomo.WorkingDir, "mihomo.pid")
 	if err = os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", cmd.Process.Pid)), 0644); err != nil {
@@ -210,6 +246,9 @@ func (s *MihomoService) Stop(saveState bool) error {
 
 func (s *MihomoService) stopWithRoutingCleanup(saveState bool, cleanupRouting config.RoutingConfig) error {
 	logger.Info("Stopping mihomo service")
+	s.mu.Lock()
+	s.isStopping = true
+	s.mu.Unlock()
 	s.stopRoutingHealthCheck()
 
 	if s.GetStatus() == "stopped" {
@@ -626,6 +665,29 @@ func (s *MihomoService) stopRoutingHealthCheck() {
 }
 
 func (s *MihomoService) checkRoutingHealth() {
+	s.mu.Lock()
+	scheduledEnabled := s.appConfig.Mihomo.AutoRestart && s.appConfig.Mihomo.AutoRestartOpts.ScheduleEnabled
+	schedTime := strings.TrimSpace(s.appConfig.Mihomo.AutoRestartOpts.ScheduleTime)
+	lastDate := s.lastScheduledRestartDate
+	s.mu.Unlock()
+
+	if scheduledEnabled && schedTime != "" {
+		now := time.Now()
+		today := now.Format("2006-01-02")
+		currentTime := now.Format("15:04")
+		if currentTime == schedTime && lastDate != today {
+			s.mu.Lock()
+			s.lastScheduledRestartDate = today
+			s.mu.Unlock()
+			logger.Infof("Triggering scheduled auto-restart at %s", currentTime)
+			go func() {
+				if err := s.Restart(); err != nil {
+					logger.Errorf("Scheduled auto-restart failed: %v", err)
+				}
+			}()
+		}
+	}
+
 	if !s.shouldSetupRouting() {
 		s.mu.Lock()
 		s.routingHealthy = true

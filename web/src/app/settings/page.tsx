@@ -18,8 +18,18 @@ import {
   Save,
   Shield,
 } from "lucide-react";
-import type { AppConfig, AppUpdateCheck, MihomoConfig, RoutingConfig } from "@/types";
+import type { AppConfig, AppUpdateCheck, AutoRestartSettings, MihomoConfig, RoutingConfig } from "@/types";
 import toast from "react-hot-toast";
+
+const defaultAutoRestartOpts: AutoRestartSettings = {
+  on_crash: false,
+  on_config_change: false,
+  on_network_change: false,
+  on_routing_failure: false,
+  schedule_enabled: false,
+  schedule_interval: "daily",
+  schedule_time: "04:00",
+};
 
 /* ------------------------------------------------------------------ */
 /*  Loading skeleton                                                  */
@@ -76,13 +86,25 @@ export default function SettingsPage() {
         mihomoApi.getCoreVersion().catch(() => ""),
         mihomoApi.getConfigs().catch(() => []),
       ]);
-      setConfig(cfg);
-      setRawJson(JSON.stringify({ mihomo: cfg.mihomo, logging: cfg.logging }, null, 2));
+      const rawOpts = cfg.mihomo?.AutoRestartOpts || (cfg.mihomo as unknown as Record<string, unknown>)?.auto_restart_opts;
+      const normalizedOpts: AutoRestartSettings = {
+        ...defaultAutoRestartOpts,
+        ...(typeof rawOpts === "object" && rawOpts !== null ? rawOpts : {}),
+      };
+      const normalizedConfig: AppConfig = {
+        ...cfg,
+        mihomo: {
+          ...cfg.mihomo,
+          AutoRestartOpts: normalizedOpts,
+        },
+      };
+      setConfig(normalizedConfig);
+      setRawJson(JSON.stringify({ mihomo: normalizedConfig.mihomo, logging: normalizedConfig.logging }, null, 2));
       setCoreVersion(version);
       setAvailableConfigs(configs);
       setDirty(false);
       setLastLoadedAt(new Date());
-      savedConfigRef.current = JSON.stringify(cfg);
+      savedConfigRef.current = JSON.stringify(normalizedConfig);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Failed to load configuration");
     } finally {
@@ -125,6 +147,27 @@ export default function SettingsPage() {
     setDirty(JSON.stringify(next) !== savedConfigRef.current);
   };
 
+  const handleAutoRestartOptsChange = <K extends keyof AutoRestartSettings>(
+    field: K,
+    value: AutoRestartSettings[K]
+  ) => {
+    if (!config) return;
+    const currentOpts = config.mihomo.AutoRestartOpts || defaultAutoRestartOpts;
+    const nextOpts: AutoRestartSettings = {
+      ...currentOpts,
+      [field]: value,
+    };
+    const next: AppConfig = {
+      ...config,
+      mihomo: {
+        ...config.mihomo,
+        AutoRestartOpts: nextOpts,
+      },
+    };
+    setConfig(next);
+    setDirty(JSON.stringify(next) !== savedConfigRef.current);
+  };
+
   const handleRoutingChange = <K extends keyof RoutingConfig>(field: K, value: RoutingConfig[K]) => {
     if (!config) return;
     const next = {
@@ -156,9 +199,17 @@ export default function SettingsPage() {
       if (!parsed.mihomo || !parsed.logging) {
         throw new Error("Missing 'mihomo' or 'logging' properties.");
       }
-      const next = {
+      const rawOpts = parsed.mihomo.AutoRestartOpts || parsed.mihomo.auto_restart_opts;
+      const normalizedOpts: AutoRestartSettings = {
+        ...defaultAutoRestartOpts,
+        ...(typeof rawOpts === "object" && rawOpts !== null ? rawOpts : {}),
+      };
+      const next: AppConfig = {
         ...config!,
-        mihomo: parsed.mihomo,
+        mihomo: {
+          ...parsed.mihomo,
+          AutoRestartOpts: normalizedOpts,
+        },
         logging: parsed.logging,
       };
       setConfig(next);
@@ -355,6 +406,54 @@ export default function SettingsPage() {
                 checked={config.mihomo.AutoRestart}
                 onChange={(v) => handleChange("AutoRestart", v)}
               />
+
+              {config.mihomo.AutoRestart && (
+                <div className="ml-4 mt-2 space-y-2.5 border-l-2 border-primary/30 pl-4">
+                  <ConfigCheckbox
+                    label="Restart on Core Crash"
+                    checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).on_crash}
+                    onChange={(v) => handleAutoRestartOptsChange("on_crash", v)}
+                  />
+                  <ConfigCheckbox
+                    label="Restart on Config Change"
+                    checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).on_config_change}
+                    onChange={(v) => handleAutoRestartOptsChange("on_config_change", v)}
+                  />
+                  <ConfigCheckbox
+                    label="Restart on Network Interface Change"
+                    checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).on_network_change}
+                    onChange={(v) => handleAutoRestartOptsChange("on_network_change", v)}
+                  />
+                  <ConfigCheckbox
+                    label="Restart on Routing Failure"
+                    checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).on_routing_failure}
+                    onChange={(v) => handleAutoRestartOptsChange("on_routing_failure", v)}
+                  />
+                  <ConfigCheckbox
+                    label="Scheduled Maintenance Restart"
+                    checked={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).schedule_enabled}
+                    onChange={(v) => handleAutoRestartOptsChange("schedule_enabled", v)}
+                  />
+
+                  {(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).schedule_enabled && (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1">
+                      <ConfigSelect
+                        label="Interval"
+                        value={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).schedule_interval}
+                        options={["daily", "weekly"]}
+                        onChange={(v) => handleAutoRestartOptsChange("schedule_interval", v)}
+                      />
+                      <ConfigInput
+                        label="Time"
+                        type="time"
+                        value={(config.mihomo.AutoRestartOpts || defaultAutoRestartOpts).schedule_time}
+                        placeholder="04:00"
+                        onChange={(v) => handleAutoRestartOptsChange("schedule_time", v)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </Card>
         </div>
@@ -541,11 +640,13 @@ function ConfigInput({
   value,
   onChange,
   type = "text",
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
+  placeholder?: string;
 }) {
   return (
     <div className="flex items-center justify-between gap-4 rounded-[8px] border border-black/70 bg-black/15 px-4 py-2.5">
@@ -554,6 +655,7 @@ function ConfigInput({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
         className="w-64 rounded border border-border bg-surface px-3 py-1.5 font-mono text-sm text-text outline-none focus:border-primary"
       />
     </div>

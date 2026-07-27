@@ -1,4 +1,4 @@
-import type { ApiResponse, MihomoStatus, AppConfig, AppUpdateCheck, DashboardInfo, ParseResponse, DnsLookupResponse, BackupEntry, BackupStatus, DiagnosticsResponse, ConfigValidationResult, ConfigAutoFixResult, SubscriptionProfile, SubscriptionProfileInput, TrafficMetrics, ConnectionsListResponse, RemoteBackupTarget, RemoteSyncStatus, UnlockTestTarget, UnlockTestResult } from "@/types";
+import type { ApiResponse, MihomoStatus, AppConfig, AppUpdateCheck, DashboardInfo, ParseResponse, DnsLookupResponse, BackupEntry, BackupStatus, DiagnosticsResponse, ConfigValidationResult, ConfigAutoFixResult, SubscriptionProfile, SubscriptionProfileInput, TrafficMetrics, ConnectionsListResponse, RemoteBackupTarget, RemoteSyncStatus, UnlockTestTarget, UnlockTestResult, ServerConfig, MihomoConfig, RoutingConfig, APIConfig, LoggingConfig, BackupConfig, AutoRestartSettings } from "@/types";
 
 const API = "";
 
@@ -9,6 +9,93 @@ class ApiError extends Error {
     this.status = status;
     this.name = "ApiError";
   }
+}
+
+export function normalizeAppConfig(raw: unknown): AppConfig {
+  const cfg = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+
+  const rawServer = ((typeof cfg.server === "object" && cfg.server !== null ? cfg.server : cfg.Server) || {}) as Record<string, unknown>;
+  const server: ServerConfig = {
+    Port: String(rawServer.Port ?? rawServer.port ?? "8080"),
+    Host: String(rawServer.Host ?? rawServer.host ?? "0.0.0.0"),
+    Mode: String(rawServer.Mode ?? rawServer.mode ?? "standalone"),
+  };
+
+  const rawMihomo = ((typeof cfg.mihomo === "object" && cfg.mihomo !== null ? cfg.mihomo : cfg.Mihomo) || {}) as Record<string, unknown>;
+  const rawRouting = ((typeof rawMihomo.Routing === "object" && rawMihomo.Routing !== null ? rawMihomo.Routing : rawMihomo.routing) || {}) as Record<string, unknown>;
+  const rawOpts = ((typeof rawMihomo.AutoRestartOpts === "object" && rawMihomo.AutoRestartOpts !== null ? rawMihomo.AutoRestartOpts : rawMihomo.auto_restart_opts) || {}) as Record<string, unknown>;
+
+  const autoRestartOpts: AutoRestartSettings = {
+    on_crash: Boolean(rawOpts.on_crash ?? rawOpts.OnCrash ?? false),
+    on_config_change: Boolean(rawOpts.on_config_change ?? rawOpts.OnConfigChange ?? false),
+    on_network_change: Boolean(rawOpts.on_network_change ?? rawOpts.OnNetworkChange ?? false),
+    on_routing_failure: Boolean(rawOpts.on_routing_failure ?? rawOpts.OnRoutingFailure ?? false),
+    schedule_enabled: Boolean(rawOpts.schedule_enabled ?? rawOpts.ScheduleEnabled ?? false),
+    schedule_interval: String(rawOpts.schedule_interval ?? rawOpts.ScheduleInterval ?? "daily"),
+    schedule_time: String(rawOpts.schedule_time ?? rawOpts.ScheduleTime ?? "04:00"),
+  };
+
+  const routing: RoutingConfig = {
+    TCP: String(rawRouting.TCP ?? rawRouting.tcp ?? "tproxy"),
+    UDP: String(rawRouting.UDP ?? rawRouting.udp ?? "tproxy"),
+    TunDevice: String(rawRouting.TunDevice ?? rawRouting.tun_device ?? rawMihomo.TunDevice ?? rawMihomo.tun_device ?? "Meta"),
+    BypassMACs: Array.isArray(rawRouting.BypassMACs ?? rawRouting.bypass_macs) ? ((rawRouting.BypassMACs ?? rawRouting.bypass_macs) as string[]) : [],
+    BypassIPs: Array.isArray(rawRouting.BypassIPs ?? rawRouting.bypass_ips) ? ((rawRouting.BypassIPs ?? rawRouting.bypass_ips) as string[]) : [],
+    BypassIP6s: Array.isArray(rawRouting.BypassIP6s ?? rawRouting.bypass_ip6s) ? ((rawRouting.BypassIP6s ?? rawRouting.bypass_ip6s) as string[]) : [],
+  };
+
+  const mihomo: MihomoConfig = {
+    CorePath: String(rawMihomo.CorePath ?? rawMihomo.core_path ?? "/usr/bin/mihomo"),
+    ConfigPath: String(rawMihomo.ConfigPath ?? rawMihomo.config_path ?? "/etc/mihomo/config.yaml"),
+    WorkingDir: String(rawMihomo.WorkingDir ?? rawMihomo.working_dir ?? "/etc/mihomo"),
+    AutoRestart: Boolean(rawMihomo.AutoRestart ?? rawMihomo.auto_restart ?? true),
+    auto_restart_opts: autoRestartOpts,
+    AutoRestartOpts: autoRestartOpts,
+    AutoStart: Boolean(rawMihomo.AutoStart ?? rawMihomo.auto_start ?? true),
+    LogFile: String(rawMihomo.LogFile ?? rawMihomo.log_file ?? "/var/log/mihomo.log"),
+    APIURL: String(rawMihomo.APIURL ?? rawMihomo.api_url ?? "http://127.0.0.1:9090"),
+    APISecret: String(rawMihomo.APISecret ?? rawMihomo.api_secret ?? ""),
+    Routing: routing,
+    TunDevice: String(rawMihomo.TunDevice ?? rawMihomo.tun_device ?? routing.TunDevice ?? "Meta"),
+  };
+
+  const rawLogging = ((typeof cfg.logging === "object" && cfg.logging !== null ? cfg.logging : cfg.Logging) || {}) as Record<string, unknown>;
+  const logging: LoggingConfig = {
+    level: String(rawLogging.level ?? rawLogging.Level ?? "info"),
+    file: (rawLogging.file ?? rawLogging.File ?? "/var/log/mihombreng.log") as string,
+    max_size: Number(rawLogging.max_size ?? rawLogging.MaxSize ?? 100),
+    max_backups: Number(rawLogging.max_backups ?? rawLogging.MaxBackups ?? 3),
+    max_age: Number(rawLogging.max_age ?? rawLogging.MaxAge ?? 28),
+  };
+
+  const rawAPI = ((typeof cfg.api === "object" && cfg.api !== null ? cfg.api : cfg.API) || {}) as Record<string, unknown>;
+  const api: APIConfig = {
+    RateLimit: Number(rawAPI.RateLimit ?? rawAPI.rate_limit ?? 100),
+    Timeout: Number(rawAPI.Timeout ?? rawAPI.timeout ?? 30),
+    EnableSwagger: Boolean(rawAPI.EnableSwagger ?? rawAPI.enable_swagger ?? true),
+    AuthToken: (rawAPI.AuthToken ?? rawAPI.auth_token ?? "") as string,
+  };
+
+  const rawBackup = ((typeof cfg.backup === "object" && cfg.backup !== null ? cfg.backup : cfg.Backup) || undefined) as Record<string, unknown> | undefined;
+  let backup: BackupConfig | undefined = undefined;
+  if (rawBackup) {
+    backup = {
+      auto_backup_enabled: Boolean(rawBackup.auto_backup_enabled ?? rawBackup.AutoBackupEnabled ?? true),
+      max_backups: Number(rawBackup.max_backups ?? rawBackup.MaxBackups ?? 10),
+      max_age_days: Number(rawBackup.max_age_days ?? rawBackup.MaxAgeDays ?? 30),
+      backup_dir: String(rawBackup.backup_dir ?? rawBackup.BackupDir ?? "/etc/mihombreng/backups"),
+    };
+  }
+
+  return {
+    version: String(cfg.version ?? cfg.Version ?? "0.0.0"),
+    environment: String(cfg.environment ?? cfg.Environment ?? "development"),
+    server,
+    mihomo,
+    logging,
+    api,
+    ...(backup ? { backup } : {}),
+  };
 }
 
 async function fetchApi<T>(
@@ -320,8 +407,8 @@ export const mihomoApi = {
 
 export const configApi = {
   async getConfig(): Promise<AppConfig> {
-    const r = await fetchApi<AppConfig>("/api/v1/app/config");
-    return r.data || { version: "0.0.0", environment: "development" } as AppConfig;
+    const r = await fetchApi<unknown>("/api/v1/app/config");
+    return normalizeAppConfig(r.data);
   },
   async updateConfig(config: Partial<AppConfig>): Promise<void> {
     await fetchApi("/api/v1/app/config", {

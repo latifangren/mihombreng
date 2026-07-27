@@ -666,7 +666,11 @@ func (h *AppHandler) UpdateConfig(c *gin.Context) {
 	}
 
 	if req.API != nil {
-		h.config.API = *req.API
+		h.config.API.RateLimit = req.API.RateLimit
+		h.config.API.Timeout = req.API.Timeout
+		h.config.API.EnableSwagger = req.API.EnableSwagger
+		h.config.API.AuthToken = req.API.AuthToken
+		// DO NOT copy CORS over directly as it causes erasure of CORS config object from disk
 	}
 
 	if req.Backup != nil {

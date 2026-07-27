@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dashboard Recovery Toolbar**: Created a "Quick Maintenance" footer segment inside the Routing Control card on the main dashboard, adding one-click buttons to reload firewall rules, flush DNS resolver caches (`dnsmasq`), and restart the Mihomo core.
 
 ### Fixed
+- **CORS Integrity Retention**: Prevented WebUI config updates from wiping API CORS settings (`allowed_origins`, `allowed_methods`) on disk.
+- **Accurate TUN Routing Diagnostics**: Replaced netlink table listing with robust shell-based routing table lookups (`ip route show table`) to properly verify gateway paths inside extended routing databases (Table 2022).
+- **API JSON Casing Mismatch**: Aligned backend API JSON serialization casing to perfectly match React model schemas, eliminating undefined state crashes when referencing routing and server configuration properties.
 - **Transparent Routing Table Verification**: Fixed TUN mode routing table verification and default gateway check to lookup specifically tables 2022 and 200 instead of default main table.
 - **Orphaned Policy Rule Garbage Collection**: Fixed transition from TUN to TPROXY mode preventing stale priorities (9000-9010) and detached Meta interface entries from remaining in kernel rule databases.
 - **Diagnostics Provider Anti-Bot By-pass**: Fixed HTTP 403 Forbidden on geoip provider lookup by using desktop User-Agent headers.

@@ -34,6 +34,20 @@ A lightweight, high-performance controller and dashboard for the **Mihomo (Clash
 
 ---
 
+## ⚖️ Design Philosophy & Comparison
+
+Mihombreng is designed as a focused, lightweight alternative for users who value minimalist controls and rapid system response times over exhaustive, dense feature matrices. Below is an objective overview of how Mihombreng compares to traditional OpenWrt proxy clients such as **OpenClash**:
+
+| Dimension | Traditional OpenClash | Mihombreng (This Project) |
+|---|---|---|
+| **Architecture** | Large-scale Shell scripts orchestrated by Lua & LuCI hooks on every action. | Single compiled Go binary hosting a Gin REST API + lightweight React SPA. |
+| **Start/Stop Latency** | Direct rebuild of extensive configuration and DNS/routing maps (typically 15-30s). | Instantly shifts active kernel rules and restarts daemon processes (<2s). |
+| **Resource Profile** | Higher CPU spikes on low-end hardware due to nested shell fork routines. | Exceptionally low footprint; leverages Go raw syscalls and optimized Rust FFI. |
+| **Lifecycle State Hygiene** | Leaves intermittent iptables/ip-rule orphans if daemon is ungracefully stopped. | Explicit garbage collection steps on exit to guarantee routing tables are clean. |
+| **Scope & Ruleset Depth** | Massive rule-writer interfaces, deep config builders, and multiple core options. | Focused on Clash Meta (Mihomo) essentials, focusing on speed and clean defaults. |
+
+---
+
 ## 📸 Screenshots
 
 ### Dashboard

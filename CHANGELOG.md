@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.6] - 2026-07-27
+
 ### Added
 - **Granular Health Check & Diagnostics**: Added kernel-level health check engine for TUN and TPROXY routing modes (`/mihomo/status` API and `/diagnostics` UI).
 - **Full WebUI Settings Management**: Exposed all `mihombreng.yaml` configuration parameters in `/settings` (boot behavior `auto_start`, server port/host, API security auth token, log rotation, and backup policies).

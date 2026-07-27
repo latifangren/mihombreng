@@ -1,6 +1,6 @@
 # Mihombreng Application Configuration
 
-version: "1.2.5"                       # Configuration version
+version: "1.2.6"                       # Configuration version
 environment: production
 
 server:

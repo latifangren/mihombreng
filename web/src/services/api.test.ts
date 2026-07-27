@@ -127,6 +127,7 @@ describe("normalizeAppConfig & configApi.getConfig", () => {
       TCP: "tproxy",
       UDP: "tun",
       TunDevice: "utun",
+      TunStack: "system",
       BypassMACs: ["00:11:22:33:44:55"],
       BypassIPs: [],
       BypassIP6s: [],
@@ -162,6 +163,7 @@ describe("normalizeAppConfig & configApi.getConfig", () => {
           TCP: "redirect",
           UDP: "tproxy",
           TunDevice: "Meta",
+          TunStack: "system",
         },
       },
       API: {
@@ -208,6 +210,7 @@ describe("normalizeAppConfig & configApi.getConfig", () => {
           TCP: "tproxy",
           UDP: "tproxy",
           TunDevice: "Meta",
+          TunStack: "system",
           BypassMACs: ["aa:bb:cc:dd:ee:ff"],
         },
       },

@@ -567,7 +567,7 @@ func (t *TUNService) createMarkingRules(routingConfig config.RoutingConfig) erro
 		})
 	}
 
-	markData := []byte{byte(t.tunMark >> 24), byte(t.tunMark >> 16), byte(t.tunMark >> 8), byte(t.tunMark)}
+	markData := []byte{byte(t.tunMark), byte(t.tunMark >> 8), byte(t.tunMark >> 16), byte(t.tunMark >> 24)}
 
 	if routingConfig.TCP == config.RoutingModeTUN {
 		t.conn.AddRule(&nftables.Rule{

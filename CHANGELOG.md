@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.7] - 2026-07-27
+
+### Added
+- **Decoupled TUN stack & device**: Separated TUN Device Name (Meta, tun0) and TUN Stack Type (system, gvisor, mixed) dropdown configuration params in Settings WebUI to eliminate driver mapping confusion.
+- **Monaco Editor Auto-Restart**: Implemented automatic Mihomo core restart triggers on raw editor saves when updating the active configuration slots.
+
+### Fixed
+- **Robust Zombie Process Cleanup**: Extended the core daemon startup sequence to perform automatic OS-level wildcard pid cleanup, avoiding port 9090 reservation lockups from orphaned instances.
+- **Correct Auto-Restart Settings Validation Route**: Fixed config updates not triggering core restarts when modifying crucial routing/firewall parameters while Auto-Restart watchdog is disabled.
+
 ## [1.2.6] - 2026-07-27
 
 ### Added

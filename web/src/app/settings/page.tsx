@@ -146,6 +146,14 @@ export default function SettingsPage() {
         ...defaultBackupConfig,
         ...(cfg.backup || {}),
       };
+      const rawDev = cfg.mihomo?.Routing?.TunDevice || cfg.mihomo?.TunDevice || "Meta";
+      const isLegacyStackAsDevice = ["gvisor", "mixed", "system"].includes(rawDev);
+      const normalizedOptsRouting = {
+        ...cfg.mihomo?.Routing,
+        TunDevice: isLegacyStackAsDevice ? "Meta" : rawDev,
+        TunStack: cfg.mihomo?.Routing?.TunStack || (isLegacyStackAsDevice ? rawDev : "system"),
+      };
+
       const normalizedConfig: AppConfig = {
         ...cfg,
         server: normalizedServer,
@@ -153,10 +161,7 @@ export default function SettingsPage() {
           ...cfg.mihomo,
           AutoStart: cfg.mihomo?.AutoStart ?? true,
           AutoRestartOpts: normalizedOpts,
-          Routing: {
-            ...cfg.mihomo?.Routing,
-            TunDevice: cfg.mihomo?.Routing?.TunDevice || cfg.mihomo?.TunDevice || "Meta",
-          },
+          Routing: normalizedOptsRouting,
         },
         logging: normalizedLogging,
         api: normalizedAPI,
@@ -611,8 +616,14 @@ export default function SettingsPage() {
             <ConfigSelect
               label="TUN Device"
               value={config.mihomo.Routing.TunDevice || "Meta"}
-              options={["Meta", "tun0", "gvisor", "mixed", "system"]}
+              options={["Meta", "tun0", "mihomo"]}
               onChange={(v) => handleRoutingChange("TunDevice", v)}
+            />
+            <ConfigSelect
+              label="TUN Stack"
+              value={config.mihomo.Routing.TunStack || "system"}
+              options={["system", "gvisor", "mixed"]}
+              onChange={(v) => handleRoutingChange("TunStack", v)}
             />
             <ConfigTextArea
               label="Bypass MAC Addresses"

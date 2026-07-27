@@ -251,7 +251,7 @@ Main app config: `/etc/mihombreng/mihombreng.yaml`
 Example:
 
 ```yaml
-version: "1.2.6"
+version: "1.2.7"
 environment: production
 server:
   port: "7777"

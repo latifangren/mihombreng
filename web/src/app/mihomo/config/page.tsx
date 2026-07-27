@@ -438,19 +438,43 @@ export default function ConfigEditorPage() {
   const handleSave = useCallback(async () => {
     if (!activeFile) return;
     const ok = await saveTab(activeFile);
-    if (ok) toast.success("Saved");
-  }, [activeFile, saveTab]);
+    if (ok) {
+      toast.success("Saved");
+      if (activeFile.type === "config" && activeFile.name === activeConfig) {
+        try {
+          await mihomoApi.restart();
+          toast.success("Core restarted to apply overrides");
+        } catch {
+          toast.error("Failed to restart Mihomo core process");
+        }
+      }
+    }
+  }, [activeFile, saveTab, activeConfig]);
 
   const handleSaveAll = useCallback(async () => {
-    if (dirtyTabs.length === 0) return;
     let saved = 0;
+    let containsActiveConfig = false;
     for (const tab of dirtyTabs) {
       const ok = await saveTab(tab);
-      if (!ok) return;
-      saved += 1;
+      if (ok) {
+        saved += 1;
+        if (tab.type === "config" && tab.name === activeConfig) {
+          containsActiveConfig = true;
+        }
+      }
     }
-    toast.success(`Saved ${saved} file${saved > 1 ? "s" : ""}`);
-  }, [dirtyTabs, saveTab]);
+    if (saved > 0) {
+      toast.success(`Saved ${saved} file${saved > 1 ? "s" : ""}`);
+      if (containsActiveConfig) {
+        try {
+          await mihomoApi.restart();
+          toast.success("Core restarted to apply overrides");
+        } catch {
+          toast.error("Failed to restart Mihomo core process");
+        }
+      }
+    }
+  }, [dirtyTabs, saveTab, activeConfig]);
 
   const handleRevertCurrent = useCallback(() => {
     if (!activeFile || !activeFile.dirty) return;

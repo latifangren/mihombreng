@@ -78,6 +78,7 @@ export interface RoutingConfig {
   TCP: string;
   UDP: string;
   TunDevice: string;
+  TunStack: string;
   BypassMACs?: string[];
   BypassIPs?: string[];
   BypassIP6s?: string[];

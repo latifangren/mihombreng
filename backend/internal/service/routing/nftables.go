@@ -323,7 +323,9 @@ func (n *NftablesService) GetHealthDetails(routingConfig config.RoutingConfig) m
 		for _, tableID := range []int{200, 2022} {
 			cmd := exec.Command("ip", "route", "show", "table", strconv.Itoa(tableID))
 			out, err := cmd.Output()
-			if err == nil && strings.Contains(string(out), "default") && strings.Contains(string(out), "via") && strings.Contains(string(out), "dev "+tunDev) {
+			// If it's a TUN routing check, we don't strictly require the "via" keyword.
+			// Check if it has "default" and "dev <tunDev>".
+			if err == nil && strings.Contains(string(out), "default") && strings.Contains(string(out), "dev "+tunDev) {
 				gwValid = true
 				break
 			}

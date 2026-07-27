@@ -39,6 +39,7 @@ export function normalizeAppConfig(raw: unknown): AppConfig {
     TCP: String(rawRouting.TCP ?? rawRouting.tcp ?? "tproxy"),
     UDP: String(rawRouting.UDP ?? rawRouting.udp ?? "tproxy"),
     TunDevice: String(rawRouting.TunDevice ?? rawRouting.tun_device ?? rawMihomo.TunDevice ?? rawMihomo.tun_device ?? "Meta"),
+    TunStack: String(rawRouting.TunStack ?? rawRouting.tun_stack ?? "system"),
     BypassMACs: Array.isArray(rawRouting.BypassMACs ?? rawRouting.bypass_macs) ? ((rawRouting.BypassMACs ?? rawRouting.bypass_macs) as string[]) : [],
     BypassIPs: Array.isArray(rawRouting.BypassIPs ?? rawRouting.bypass_ips) ? ((rawRouting.BypassIPs ?? rawRouting.bypass_ips) as string[]) : [],
     BypassIP6s: Array.isArray(rawRouting.BypassIP6s ?? rawRouting.bypass_ip6s) ? ((rawRouting.BypassIP6s ?? rawRouting.bypass_ip6s) as string[]) : [],
@@ -254,6 +255,11 @@ export function serializeAppConfig(config: Partial<AppConfig>): unknown {
         const val = rawRouting.TunDevice ?? rawRouting.tun_device;
         outRouting.TunDevice = val;
         outRouting.tun_device = val;
+      }
+      if (rawRouting.TunStack !== undefined || rawRouting.tun_stack !== undefined) {
+        const val = rawRouting.TunStack ?? rawRouting.tun_stack;
+        outRouting.TunStack = val;
+        outRouting.tun_stack = val;
       }
       if (rawRouting.BypassMACs !== undefined || rawRouting.bypass_macs !== undefined) {
         const val = rawRouting.BypassMACs ?? rawRouting.bypass_macs;

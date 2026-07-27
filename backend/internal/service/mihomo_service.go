@@ -84,37 +84,20 @@ func (s *MihomoService) GetUptime() int64 {
 func (s *MihomoService) killExistingMihomo() error {
 	pidFile := filepath.Join(s.appConfig.Mihomo.WorkingDir, "mihomo.pid")
 	pidData, err := os.ReadFile(pidFile)
-	if err != nil {
-		logger.Debug("No existing mihomo PID file found")
-		return nil
-	}
-
-	var pid int
-	_, err = fmt.Sscanf(string(pidData), "%d", &pid)
-	if err != nil {
-		logger.Warnf("Invalid PID file format, removing: %v", err)
-		os.Remove(pidFile)
-		return nil
-	}
-
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		logger.Debugf("Process %d not found, removing stale PID file", pid)
-		os.Remove(pidFile)
-		return nil
-	}
-
-	err = process.Signal(syscall.Signal(0))
 	if err == nil {
-		logger.Infof("Killing existing mihomo process (PID: %d)", pid)
-		if err := process.Kill(); err != nil {
-			return fmt.Errorf("failed to kill existing mihomo process: %w", err)
+		var pid int
+		if _, errInt := fmt.Sscanf(string(pidData), "%d", &pid); errInt == nil {
+			if process, errProc := os.FindProcess(pid); errProc == nil {
+				_ = process.Signal(syscall.Signal(0))
+				_ = process.Kill()
+			}
 		}
-		if err := os.Remove(pidFile); err != nil {
-			return fmt.Errorf("failed to remove old pid file: %w", err)
-		}
-		logger.Info("Existing mihomo process killed successfully")
+		os.Remove(pidFile)
 	}
+
+	// Double-kill fallback: Kill any remaining un-tracked/zombie mihomo processes
+	// to prevent socket/port 9090 binding conflicts on router start/restart.
+	_ = exec.Command("killall", "-9", "mihomo").Run()
 
 	return nil
 }
@@ -463,7 +446,11 @@ func (s *MihomoService) adjustMihomoConfig() error {
 		if tunDevice == "" {
 			tunDevice = "Meta"
 		}
-		configStr = ensureTUNEnabled(configStr, tunDevice)
+		tunStack := s.appConfig.Mihomo.Routing.TunStack
+		if tunStack == "" {
+			tunStack = "system"
+		}
+		configStr = ensureTUNEnabled(configStr, tunDevice, tunStack)
 	} else {
 		configStr = ensureTUNDisabled(configStr)
 	}
@@ -476,11 +463,12 @@ func (s *MihomoService) adjustMihomoConfig() error {
 	return nil
 }
 
-func ensureTUNEnabled(config string, deviceName string) string {
+func ensureTUNEnabled(config string, deviceName string, stackType string) string {
 	lines := strings.Split(config, "\n")
 	var newLines []string
 	inTunSection := false
 	hasDeviceField := false
+	hasStackField := false
 	tunSectionIndent := "  "
 
 	tempInTun := false
@@ -495,8 +483,13 @@ func ensureTUNEnabled(config string, deviceName string) string {
 				isIndented := len(line) > 0 && (line[0] == ' ' || line[0] == '\t')
 				if !isIndented {
 					tempInTun = false
-				} else if strings.HasPrefix(trimmed, "device:") {
-					hasDeviceField = true
+				} else {
+					if strings.HasPrefix(trimmed, "device:") {
+						hasDeviceField = true
+					}
+					if strings.HasPrefix(trimmed, "stack:") {
+						hasStackField = true
+					}
 				}
 			}
 		}
@@ -538,6 +531,10 @@ func ensureTUNEnabled(config string, deviceName string) string {
 					newLines = append(newLines, tunSectionIndent+"device: "+deviceName)
 					hasDeviceField = true
 				}
+				if !hasStackField {
+					newLines = append(newLines, tunSectionIndent+"stack: "+stackType)
+					hasStackField = true
+				}
 				continue
 			}
 
@@ -546,6 +543,17 @@ func ensureTUNEnabled(config string, deviceName string) string {
 				if idx != -1 {
 					prefix := line[:idx+1]
 					newLines = append(newLines, prefix+" "+deviceName)
+				} else {
+					newLines = append(newLines, line)
+				}
+				continue
+			}
+
+			if strings.HasPrefix(trimmed, "stack:") {
+				idx := strings.Index(line, ":")
+				if idx != -1 {
+					prefix := line[:idx+1]
+					newLines = append(newLines, prefix+" "+stackType)
 				} else {
 					newLines = append(newLines, line)
 				}

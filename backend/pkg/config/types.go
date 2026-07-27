@@ -30,6 +30,7 @@ type RoutingConfig struct {
 	TCP            RoutingMode `yaml:"tcp" json:"tcp"`
 	UDP            RoutingMode `yaml:"udp" json:"udp"`
 	TunDevice      string      `yaml:"tun_device" json:"tun_device"`
+	TunStack       string      `yaml:"tun_stack" json:"tun_stack"`
 	BypassMACs     []string    `yaml:"bypass_macs" json:"bypass_macs"`
 	BypassIPs      []string    `yaml:"bypass_ips" json:"bypass_ips"`
 	BypassIP6s     []string    `yaml:"bypass_ip6s" json:"bypass_ip6s"`

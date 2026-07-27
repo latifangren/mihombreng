@@ -634,6 +634,16 @@ func (h *AppHandler) UpdateConfig(c *gin.Context) {
 	}
 
 	if req.Mihomo != nil {
+		needsRestart = h.mihomoService.GetStatus() == "running" && (
+			h.config.Mihomo.CorePath != req.Mihomo.CorePath ||
+			h.config.Mihomo.ConfigPath != req.Mihomo.ConfigPath ||
+			h.config.Mihomo.WorkingDir != req.Mihomo.WorkingDir ||
+			h.config.Mihomo.Routing.TCP != req.Mihomo.Routing.TCP ||
+			h.config.Mihomo.Routing.UDP != req.Mihomo.Routing.UDP ||
+			h.config.Mihomo.Routing.TunDevice != req.Mihomo.Routing.TunDevice ||
+			h.config.Mihomo.Routing.TunStack != req.Mihomo.Routing.TunStack ||
+			h.config.Mihomo.APISecret != req.Mihomo.APISecret)
+
 		h.config.Mihomo.CorePath = req.Mihomo.CorePath
 		h.config.Mihomo.ConfigPath = req.Mihomo.ConfigPath
 		h.config.Mihomo.WorkingDir = req.Mihomo.WorkingDir
@@ -644,7 +654,6 @@ func (h *AppHandler) UpdateConfig(c *gin.Context) {
 		h.config.Mihomo.APIURL = req.Mihomo.APIURL
 		h.config.Mihomo.APISecret = req.Mihomo.APISecret
 		h.config.Mihomo.Routing = req.Mihomo.Routing
-		needsRestart = req.Mihomo.AutoRestart && h.mihomoService.GetStatus() == "running"
 	}
 
 	if req.Logging != nil {

@@ -84,7 +84,7 @@ The default configuration files reside in `/etc/mihombreng/`.
 ### App Configuration (`/etc/mihombreng/mihombreng.yaml`)
 Configure the Mihombreng server settings:
 ```yaml
-version: "1.2.6"
+version: "1.2.7"
 environment: production
 server:
   port: "7777"

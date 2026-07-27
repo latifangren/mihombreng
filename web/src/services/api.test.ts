@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { mihomoApi, configApi, normalizeAppConfig } from "./api";
+import { mihomoApi, configApi, normalizeAppConfig, serializeAppConfig } from "./api";
 
 describe("mihomoApi", () => {
   beforeEach(() => {
@@ -177,6 +177,106 @@ describe("normalizeAppConfig & configApi.getConfig", () => {
     expect(normalized.mihomo.CorePath).toBe("/bin/mihomo");
     expect(normalized.mihomo.Routing.TCP).toBe("redirect");
     expect(normalized.api.EnableSwagger).toBe(false);
+  });
+
+  it("should serialize AppConfig with dual-casing for nested parameters", () => {
+    const inputConfig = {
+      server: {
+        Port: "8080",
+        Host: "0.0.0.0",
+        Mode: "standalone",
+      },
+      mihomo: {
+        CorePath: "/usr/bin/mihomo",
+        ConfigPath: "/etc/mihomo/config.yaml",
+        WorkingDir: "/etc/mihomo",
+        AutoRestart: true,
+        auto_restart_opts: {
+          on_crash: true,
+          on_config_change: false,
+          on_network_change: true,
+          on_routing_failure: false,
+          schedule_enabled: true,
+          schedule_interval: "daily",
+          schedule_time: "04:00",
+        },
+        AutoStart: true,
+        LogFile: "/var/log/mihomo.log",
+        APIURL: "http://127.0.0.1:9090",
+        APISecret: "secret",
+        Routing: {
+          TCP: "tproxy",
+          UDP: "tproxy",
+          TunDevice: "Meta",
+          BypassMACs: ["aa:bb:cc:dd:ee:ff"],
+        },
+      },
+      logging: {
+        level: "info",
+        file: "/var/log/app.log",
+        max_size: 100,
+        max_backups: 3,
+        max_age: 28,
+      },
+      api: {
+        RateLimit: 100,
+        Timeout: 30,
+        EnableSwagger: true,
+        AuthToken: "token",
+      },
+      backup: {
+        auto_backup_enabled: true,
+        max_backups: 10,
+        max_age_days: 30,
+        backup_dir: "/backups",
+      },
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const serialized = serializeAppConfig(inputConfig) as Record<string, any>;
+
+    // Server
+    expect(serialized.server).toBeDefined();
+    expect(serialized.Server).toBeDefined();
+    expect(serialized.server.port).toBe("8080");
+    expect(serialized.server.Port).toBe("8080");
+
+    // Mihomo & Routing
+    expect(serialized.mihomo).toBeDefined();
+    expect(serialized.Mihomo).toBeDefined();
+    expect(serialized.mihomo.core_path).toBe("/usr/bin/mihomo");
+    expect(serialized.mihomo.CorePath).toBe("/usr/bin/mihomo");
+
+    expect(serialized.mihomo.routing).toBeDefined();
+    expect(serialized.mihomo.Routing).toBeDefined();
+    expect(serialized.mihomo.routing.tcp).toBe("tproxy");
+    expect(serialized.mihomo.routing.TCP).toBe("tproxy");
+    expect(serialized.mihomo.routing.bypass_macs).toEqual(["aa:bb:cc:dd:ee:ff"]);
+    expect(serialized.mihomo.routing.BypassMACs).toEqual(["aa:bb:cc:dd:ee:ff"]);
+
+    // AutoRestartOpts
+    expect(serialized.mihomo.auto_restart_opts).toBeDefined();
+    expect(serialized.mihomo.AutoRestartOpts).toBeDefined();
+    expect(serialized.mihomo.auto_restart_opts.on_crash).toBe(true);
+    expect(serialized.mihomo.auto_restart_opts.OnCrash).toBe(true);
+
+    // Logging
+    expect(serialized.logging).toBeDefined();
+    expect(serialized.Logging).toBeDefined();
+    expect(serialized.logging.level).toBe("info");
+    expect(serialized.logging.Level).toBe("info");
+
+    // API
+    expect(serialized.api).toBeDefined();
+    expect(serialized.API).toBeDefined();
+    expect(serialized.api.rate_limit).toBe(100);
+    expect(serialized.api.RateLimit).toBe(100);
+
+    // Backup
+    expect(serialized.backup).toBeDefined();
+    expect(serialized.Backup).toBeDefined();
+    expect(serialized.backup.auto_backup_enabled).toBe(true);
+    expect(serialized.backup.AutoBackupEnabled).toBe(true);
   });
 });
 

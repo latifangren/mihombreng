@@ -98,6 +98,282 @@ export function normalizeAppConfig(raw: unknown): AppConfig {
   };
 }
 
+export function serializeAppConfig(config: Partial<AppConfig>): unknown {
+  if (typeof config !== "object" || config === null) {
+    return config;
+  }
+
+  const raw = JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
+  const out: Record<string, unknown> = { ...raw };
+
+  if (raw.version !== undefined || raw.Version !== undefined) {
+    const val = raw.version ?? raw.Version;
+    out.version = val;
+    out.Version = val;
+  }
+
+  if (raw.environment !== undefined || raw.Environment !== undefined) {
+    const val = raw.environment ?? raw.Environment;
+    out.environment = val;
+    out.Environment = val;
+  }
+
+  if ((typeof raw.server === "object" && raw.server !== null) || (typeof raw.Server === "object" && raw.Server !== null)) {
+    const rawServer = ((raw.server || raw.Server) as Record<string, unknown>);
+    const outServer: Record<string, unknown> = { ...rawServer };
+
+    if (rawServer.Port !== undefined || rawServer.port !== undefined) {
+      const val = rawServer.Port ?? rawServer.port;
+      outServer.Port = val;
+      outServer.port = val;
+    }
+    if (rawServer.Host !== undefined || rawServer.host !== undefined) {
+      const val = rawServer.Host ?? rawServer.host;
+      outServer.Host = val;
+      outServer.host = val;
+    }
+    if (rawServer.Mode !== undefined || rawServer.mode !== undefined) {
+      const val = rawServer.Mode ?? rawServer.mode;
+      outServer.Mode = val;
+      outServer.mode = val;
+    }
+
+    out.server = outServer;
+    out.Server = outServer;
+  }
+
+  if ((typeof raw.mihomo === "object" && raw.mihomo !== null) || (typeof raw.Mihomo === "object" && raw.Mihomo !== null)) {
+    const rawMihomo = ((raw.mihomo || raw.Mihomo) as Record<string, unknown>);
+    const outMihomo: Record<string, unknown> = { ...rawMihomo };
+
+    if (rawMihomo.CorePath !== undefined || rawMihomo.core_path !== undefined) {
+      const val = rawMihomo.CorePath ?? rawMihomo.core_path;
+      outMihomo.CorePath = val;
+      outMihomo.core_path = val;
+    }
+    if (rawMihomo.ConfigPath !== undefined || rawMihomo.config_path !== undefined) {
+      const val = rawMihomo.ConfigPath ?? rawMihomo.config_path;
+      outMihomo.ConfigPath = val;
+      outMihomo.config_path = val;
+    }
+    if (rawMihomo.WorkingDir !== undefined || rawMihomo.working_dir !== undefined) {
+      const val = rawMihomo.WorkingDir ?? rawMihomo.working_dir;
+      outMihomo.WorkingDir = val;
+      outMihomo.working_dir = val;
+    }
+    if (rawMihomo.AutoRestart !== undefined || rawMihomo.auto_restart !== undefined) {
+      const val = rawMihomo.AutoRestart ?? rawMihomo.auto_restart;
+      outMihomo.AutoRestart = val;
+      outMihomo.auto_restart = val;
+    }
+    if (rawMihomo.AutoStart !== undefined || rawMihomo.auto_start !== undefined) {
+      const val = rawMihomo.AutoStart ?? rawMihomo.auto_start;
+      outMihomo.AutoStart = val;
+      outMihomo.auto_start = val;
+    }
+    if (rawMihomo.LogFile !== undefined || rawMihomo.log_file !== undefined) {
+      const val = rawMihomo.LogFile ?? rawMihomo.log_file;
+      outMihomo.LogFile = val;
+      outMihomo.log_file = val;
+    }
+    if (rawMihomo.APIURL !== undefined || rawMihomo.api_url !== undefined) {
+      const val = rawMihomo.APIURL ?? rawMihomo.api_url;
+      outMihomo.APIURL = val;
+      outMihomo.api_url = val;
+    }
+    if (rawMihomo.APISecret !== undefined || rawMihomo.api_secret !== undefined) {
+      const val = rawMihomo.APISecret ?? rawMihomo.api_secret;
+      outMihomo.APISecret = val;
+      outMihomo.api_secret = val;
+    }
+    if (rawMihomo.TunDevice !== undefined || rawMihomo.tun_device !== undefined) {
+      const val = rawMihomo.TunDevice ?? rawMihomo.tun_device;
+      outMihomo.TunDevice = val;
+      outMihomo.tun_device = val;
+    }
+
+    if ((typeof rawMihomo.AutoRestartOpts === "object" && rawMihomo.AutoRestartOpts !== null) || (typeof rawMihomo.auto_restart_opts === "object" && rawMihomo.auto_restart_opts !== null)) {
+      const rawOpts = ((rawMihomo.AutoRestartOpts || rawMihomo.auto_restart_opts) as Record<string, unknown>);
+      const outOpts: Record<string, unknown> = { ...rawOpts };
+
+      if (rawOpts.on_crash !== undefined || rawOpts.OnCrash !== undefined) {
+        const val = rawOpts.on_crash ?? rawOpts.OnCrash;
+        outOpts.on_crash = val;
+        outOpts.OnCrash = val;
+      }
+      if (rawOpts.on_config_change !== undefined || rawOpts.OnConfigChange !== undefined) {
+        const val = rawOpts.on_config_change ?? rawOpts.OnConfigChange;
+        outOpts.on_config_change = val;
+        outOpts.OnConfigChange = val;
+      }
+      if (rawOpts.on_network_change !== undefined || rawOpts.OnNetworkChange !== undefined) {
+        const val = rawOpts.on_network_change ?? rawOpts.OnNetworkChange;
+        outOpts.on_network_change = val;
+        outOpts.OnNetworkChange = val;
+      }
+      if (rawOpts.on_routing_failure !== undefined || rawOpts.OnRoutingFailure !== undefined) {
+        const val = rawOpts.on_routing_failure ?? rawOpts.OnRoutingFailure;
+        outOpts.on_routing_failure = val;
+        outOpts.OnRoutingFailure = val;
+      }
+      if (rawOpts.schedule_enabled !== undefined || rawOpts.ScheduleEnabled !== undefined) {
+        const val = rawOpts.schedule_enabled ?? rawOpts.ScheduleEnabled;
+        outOpts.schedule_enabled = val;
+        outOpts.ScheduleEnabled = val;
+      }
+      if (rawOpts.schedule_interval !== undefined || rawOpts.ScheduleInterval !== undefined) {
+        const val = rawOpts.schedule_interval ?? rawOpts.ScheduleInterval;
+        outOpts.schedule_interval = val;
+        outOpts.ScheduleInterval = val;
+      }
+      if (rawOpts.schedule_time !== undefined || rawOpts.ScheduleTime !== undefined) {
+        const val = rawOpts.schedule_time ?? rawOpts.ScheduleTime;
+        outOpts.schedule_time = val;
+        outOpts.ScheduleTime = val;
+      }
+
+      outMihomo.auto_restart_opts = outOpts;
+      outMihomo.AutoRestartOpts = outOpts;
+    }
+
+    if ((typeof rawMihomo.Routing === "object" && rawMihomo.Routing !== null) || (typeof rawMihomo.routing === "object" && rawMihomo.routing !== null)) {
+      const rawRouting = ((rawMihomo.Routing || rawMihomo.routing) as Record<string, unknown>);
+      const outRouting: Record<string, unknown> = { ...rawRouting };
+
+      if (rawRouting.TCP !== undefined || rawRouting.tcp !== undefined) {
+        const val = rawRouting.TCP ?? rawRouting.tcp;
+        outRouting.TCP = val;
+        outRouting.tcp = val;
+      }
+      if (rawRouting.UDP !== undefined || rawRouting.udp !== undefined) {
+        const val = rawRouting.UDP ?? rawRouting.udp;
+        outRouting.UDP = val;
+        outRouting.udp = val;
+      }
+      if (rawRouting.TunDevice !== undefined || rawRouting.tun_device !== undefined) {
+        const val = rawRouting.TunDevice ?? rawRouting.tun_device;
+        outRouting.TunDevice = val;
+        outRouting.tun_device = val;
+      }
+      if (rawRouting.BypassMACs !== undefined || rawRouting.bypass_macs !== undefined) {
+        const val = rawRouting.BypassMACs ?? rawRouting.bypass_macs;
+        outRouting.BypassMACs = val;
+        outRouting.bypass_macs = val;
+      }
+      if (rawRouting.BypassIPs !== undefined || rawRouting.bypass_ips !== undefined) {
+        const val = rawRouting.BypassIPs ?? rawRouting.bypass_ips;
+        outRouting.BypassIPs = val;
+        outRouting.bypass_ips = val;
+      }
+      if (rawRouting.BypassIP6s !== undefined || rawRouting.bypass_ip6s !== undefined) {
+        const val = rawRouting.BypassIP6s ?? rawRouting.bypass_ip6s;
+        outRouting.BypassIP6s = val;
+        outRouting.bypass_ip6s = val;
+      }
+
+      outMihomo.Routing = outRouting;
+      outMihomo.routing = outRouting;
+    }
+
+    out.mihomo = outMihomo;
+    out.Mihomo = outMihomo;
+  }
+
+  if ((typeof raw.logging === "object" && raw.logging !== null) || (typeof raw.Logging === "object" && raw.Logging !== null)) {
+    const rawLogging = ((raw.logging || raw.Logging) as Record<string, unknown>);
+    const outLogging: Record<string, unknown> = { ...rawLogging };
+
+    if (rawLogging.level !== undefined || rawLogging.Level !== undefined) {
+      const val = rawLogging.level ?? rawLogging.Level;
+      outLogging.level = val;
+      outLogging.Level = val;
+    }
+    if (rawLogging.file !== undefined || rawLogging.File !== undefined) {
+      const val = rawLogging.file ?? rawLogging.File;
+      outLogging.file = val;
+      outLogging.File = val;
+    }
+    if (rawLogging.max_size !== undefined || rawLogging.MaxSize !== undefined) {
+      const val = rawLogging.max_size ?? rawLogging.MaxSize;
+      outLogging.max_size = val;
+      outLogging.MaxSize = val;
+    }
+    if (rawLogging.max_backups !== undefined || rawLogging.MaxBackups !== undefined) {
+      const val = rawLogging.max_backups ?? rawLogging.MaxBackups;
+      outLogging.max_backups = val;
+      outLogging.MaxBackups = val;
+    }
+    if (rawLogging.max_age !== undefined || rawLogging.MaxAge !== undefined) {
+      const val = rawLogging.max_age ?? rawLogging.MaxAge;
+      outLogging.max_age = val;
+      outLogging.MaxAge = val;
+    }
+
+    out.logging = outLogging;
+    out.Logging = outLogging;
+  }
+
+  if ((typeof raw.api === "object" && raw.api !== null) || (typeof raw.API === "object" && raw.API !== null)) {
+    const rawAPI = ((raw.api || raw.API) as Record<string, unknown>);
+    const outAPI: Record<string, unknown> = { ...rawAPI };
+
+    if (rawAPI.RateLimit !== undefined || rawAPI.rate_limit !== undefined) {
+      const val = rawAPI.RateLimit ?? rawAPI.rate_limit;
+      outAPI.RateLimit = val;
+      outAPI.rate_limit = val;
+    }
+    if (rawAPI.Timeout !== undefined || rawAPI.timeout !== undefined) {
+      const val = rawAPI.Timeout ?? rawAPI.timeout;
+      outAPI.Timeout = val;
+      outAPI.timeout = val;
+    }
+    if (rawAPI.EnableSwagger !== undefined || rawAPI.enable_swagger !== undefined) {
+      const val = rawAPI.EnableSwagger ?? rawAPI.enable_swagger;
+      outAPI.EnableSwagger = val;
+      outAPI.enable_swagger = val;
+    }
+    if (rawAPI.AuthToken !== undefined || rawAPI.auth_token !== undefined) {
+      const val = rawAPI.AuthToken ?? rawAPI.auth_token;
+      outAPI.AuthToken = val;
+      outAPI.auth_token = val;
+    }
+
+    out.api = outAPI;
+    out.API = outAPI;
+  }
+
+  if ((typeof raw.backup === "object" && raw.backup !== null) || (typeof raw.Backup === "object" && raw.Backup !== null)) {
+    const rawBackup = ((raw.backup || raw.Backup) as Record<string, unknown>);
+    const outBackup: Record<string, unknown> = { ...rawBackup };
+
+    if (rawBackup.auto_backup_enabled !== undefined || rawBackup.AutoBackupEnabled !== undefined) {
+      const val = rawBackup.auto_backup_enabled ?? rawBackup.AutoBackupEnabled;
+      outBackup.auto_backup_enabled = val;
+      outBackup.AutoBackupEnabled = val;
+    }
+    if (rawBackup.max_backups !== undefined || rawBackup.MaxBackups !== undefined) {
+      const val = rawBackup.max_backups ?? rawBackup.MaxBackups;
+      outBackup.max_backups = val;
+      outBackup.MaxBackups = val;
+    }
+    if (rawBackup.max_age_days !== undefined || rawBackup.MaxAgeDays !== undefined) {
+      const val = rawBackup.max_age_days ?? rawBackup.MaxAgeDays;
+      outBackup.max_age_days = val;
+      outBackup.MaxAgeDays = val;
+    }
+    if (rawBackup.backup_dir !== undefined || rawBackup.BackupDir !== undefined) {
+      const val = rawBackup.backup_dir ?? rawBackup.BackupDir;
+      outBackup.backup_dir = val;
+      outBackup.BackupDir = val;
+    }
+
+    out.backup = outBackup;
+    out.Backup = outBackup;
+  }
+
+  return out;
+}
+
 async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit
@@ -413,7 +689,7 @@ export const configApi = {
   async updateConfig(config: Partial<AppConfig>): Promise<void> {
     await fetchApi("/api/v1/app/config", {
       method: "PUT",
-      body: JSON.stringify(config),
+      body: JSON.stringify(serializeAppConfig(config)),
     });
   },
   async getDiagnostics(): Promise<DiagnosticsResponse> {

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dashboard Recovery Toolbar**: Created a "Quick Maintenance" footer segment inside the Routing Control card on the main dashboard, adding one-click buttons to reload firewall rules, flush DNS resolver caches (`dnsmasq`), and restart the Mihomo core.
 
 ### Fixed
+- **Dual-Casing Config Serialization**: Implemented client-side dual-casing serialization for configuration updates, preventing backend config overwrites or empty value erasures during mixed-version router updates.
 - **CORS Integrity Retention**: Prevented WebUI config updates from wiping API CORS settings (`allowed_origins`, `allowed_methods`) on disk.
 - **Accurate TUN Routing Diagnostics**: Replaced netlink table listing with robust shell-based routing table lookups (`ip route show table`) to properly verify gateway paths inside extended routing databases (Table 2022).
 - **API JSON Casing Mismatch**: Aligned backend API JSON serialization casing to perfectly match React model schemas, eliminating undefined state crashes when referencing routing and server configuration properties.

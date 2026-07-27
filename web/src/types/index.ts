@@ -40,6 +40,7 @@ export interface AppConfig {
   logging: LoggingConfig;
   api: APIConfig;
   backup?: BackupConfig;
+  unlock_test?: UnlockTestConfig;
 }
 
 export interface ServerConfig {
@@ -90,11 +91,22 @@ export interface LoggingConfig {
   max_age?: number;
 }
 
+export interface CORSConfig {
+  enabled: boolean;
+  allowed_origins: string[];
+  allowed_methods: string[];
+  allowed_headers: string[];
+  expose_headers: string[];
+  allow_credentials: boolean;
+  max_age: number;
+}
+
 export interface APIConfig {
   RateLimit: number;
   Timeout: number;
   EnableSwagger: boolean;
   AuthToken?: string;
+  cors?: CORSConfig;
 }
 
 export interface BackupConfig {
@@ -102,6 +114,7 @@ export interface BackupConfig {
   max_backups: number;
   max_age_days: number;
   backup_dir: string;
+  targets?: RemoteBackupTarget[];
 }
 
 export interface DashboardInfo {
@@ -304,6 +317,19 @@ export interface ConnectionsListResponse {
   connections: ConnectionInfo[];
   downloadTotal: number;
   uploadTotal: number;
+}
+
+export interface UnlockTestTargetConfig {
+  id: string;
+  name: string;
+  url?: string;
+  host?: string;
+  expected?: number;
+  type: string;
+}
+
+export interface UnlockTestConfig {
+  targets: UnlockTestTargetConfig[];
 }
 
 export interface UnlockTestTarget {

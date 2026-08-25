@@ -1,4 +1,36 @@
-- name: Cleanup workflow runs
+name: "Cleanup Workflow Runs & Caches"
+
+on:
+  workflow_dispatch:
+    inputs:
+      keep_runs:
+        description: "Jumlah workflow run terakhir yang disimpan"
+        required: true
+        default: "10"
+        type: string
+      keep_caches:
+        description: "Jumlah cache terakhir yang disimpan (0 = nonaktifkan)"
+        required: true
+        default: "5"
+        type: string
+      dry_run:
+        description: "Dry run (centang = simulasi saja, uncheck = hapus beneran)"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Cleanup workflow runs
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           KEEP: ${{ inputs.keep_runs }}
@@ -7,11 +39,11 @@
           set -euo pipefail
           
           echo "=== Membersihkan Workflow Runs ==="
+          echo "Menyimpan $KEEP run terakhir"
+          echo "Dry-run: $DRY"
+          echo ""
           
-          # Ambil semua Run ID terurut dari yang paling baru
           ALL_RUNS=$(gh run list --limit 500 --json databaseId -q '.[].databaseId')
-          
-          # Skip sebanyak KEEP, sisanya adalah target hapus (run lama)
           TO_DELETE=$(echo "$ALL_RUNS" | tail -n +$((KEEP + 1)))
           
           DELETED=0
@@ -36,3 +68,41 @@
           
           echo "RUNS_DELETED=$DELETED" >> $GITHUB_ENV
           echo "RUNS_FAILED=$FAILED" >> $GITHUB_ENV
+
+      - name: Cleanup caches
+        if: ${{ inputs.keep_caches != '0' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          KEEP_CACHES: ${{ inputs.keep_caches }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          
+          echo "=== Membersihkan Caches ==="
+          
+          ALL_CACHES=$(gh cache list --limit 100 --json id -q '.[].id')
+          TO_DELETE=$(echo "$ALL_CACHES" | tail -n +$((KEEP_CACHES + 1)))
+          
+          DELETED=0
+          FAILED=0
+          
+          if [ -z "$TO_DELETE" ]; then
+            echo "Tidak ada cache yang perlu dihapus (total cache <= $KEEP_CACHES)."
+          else
+            for cache_id in $TO_DELETE; do
+              if [ "$DRY" = "true" ]; then
+                echo "DRY RUN: akan menghapus cache ID=$cache_id"
+              else
+                echo "Menghapus cache ID=$cache_id"
+                if gh cache delete "$cache_id"; then
+                  ((DELETED++)) || true
+                else
+                  ((FAILED++)) || true
+                fi
+              fi
+            done
+          fi
+          
+          echo "CACHES_DELETED=$DELETED" >> $GITHUB_ENV
+          echo "CACHES_FAILED=$FAILED" >> $GITHUB_ENV

@@ -1,0 +1,230 @@
+name: "Cleanup Workflow Runs & Caches"
+
+on:
+  workflow_dispatch:
+    inputs:
+      keep_runs:
+        description: "Jumlah workflow run terakhir yang disimpan"
+        required: true
+        default: "10"
+        type: string
+      keep_caches:
+        description: "Jumlah cache terakhir yang disimpan (0 = nonaktifkan pembersihan cache)"
+        required: true
+        default: "5"
+        type: string
+      branch:
+        description: "Branch untuk membersihkan cache (kosongkan untuk semua branch)"
+        required: false
+        type: string
+      cache_key_pattern:
+        description: "Pattern cache key yang akan dihapus (misal: buildx-, kosongkan untuk semua)"
+        required: false
+        type: string
+      dry_run:
+        description: "Jika true, hanya tampilkan apa yang akan dihapus"
+        required: true
+        default: "true"
+        type: boolean
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup tools
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+
+      - name: Cleanup workflow runs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          KEEP: ${{ inputs.keep_runs }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          
+          echo "=== Membersihkan Workflow Runs ==="
+          echo "Repository: $REPO"
+          echo "Menyimpan $KEEP run terakhir"
+          echo "Dry-run: $DRY"
+          echo ""
+          
+          DELETED=0
+          FAILED=0
+          
+          # Ambil semua runs dengan pagination
+          page=1
+          while true; do
+            echo "Mengambil halaman $page..."
+            runs_json=$(curl -s -H "Authorization: token $GH_TOKEN" \
+              "https://api.github.com/repos/$REPO/actions/runs?per_page=100&page=$page")
+            
+            run_count=$(echo "$runs_json" | jq '.workflow_runs | length')
+            if [ "$run_count" -eq 0 ]; then
+              break
+            fi
+            
+            to_delete=$(echo "$runs_json" | jq -r --argjson keep "$KEEP" '
+              .workflow_runs
+              | sort_by(.created_at)
+              | reverse
+              | to_entries
+              | .[] | select(.key >= ($keep | tonumber)) | .value.id
+            ')
+            
+            if [ -z "$to_delete" ]; then
+              echo "Tidak ada runs yang perlu dihapus di halaman ini."
+            else
+              while IFS= read -r run_id; do
+                run_name=$(echo "$runs_json" | jq -r --arg id "$run_id" '.workflow_runs[] | select(.id == ($id | tonumber)) | .name')
+                run_created=$(echo "$runs_json" | jq -r --arg id "$run_id" '.workflow_runs[] | select(.id == ($id | tonumber)) | .created_at')
+                
+                if [ "$DRY" = "true" ]; then
+                  echo "DRY RUN: akan menghapus run ID=$run_id | Name=$run_name | Created=$run_created"
+                else
+                  echo "Menghapus run ID=$run_id | Name=$run_name | Created=$run_created"
+                  if curl -s -X DELETE -H "Authorization: token $GH_TOKEN" \
+                    "https://api.github.com/repos/$REPO/actions/runs/$run_id" > /dev/null 2>&1; then
+                    ((DELETED++)) || true
+                  else
+                    ((FAILED++)) || true
+                    echo "❌ Gagal menghapus run ID=$run_id"
+                  fi
+                fi
+              done <<< "$to_delete"
+            fi
+            
+            ((page++)) || true
+          done
+          
+          echo ""
+          echo "✓ Cleanup workflow runs selesai"
+          echo "  - Dihapus: $DELETED"
+          echo "  - Gagal: $FAILED"
+          echo ""
+          
+          echo "RUNS_DELETED=$DELETED" >> $GITHUB_ENV
+          echo "RUNS_FAILED=$FAILED" >> $GITHUB_ENV
+
+      - name: Cleanup caches
+        if: ${{ inputs.keep_caches != '0' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          KEEP_CACHES: ${{ inputs.keep_caches }}
+          BRANCH: ${{ inputs.branch }}
+          PATTERN: ${{ inputs.cache_key_pattern }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          
+          echo "=== Membersihkan Caches ==="
+          echo "Repository: $REPO"
+          echo "Menyimpan $KEEP_CACHES cache terakhir"
+          echo "Branch filter: ${BRANCH:-semua branch}"
+          echo "Pattern filter: ${PATTERN:-semua cache}"
+          echo "Dry-run: $DRY"
+          echo ""
+          
+          DELETED=0
+          FAILED=0
+          
+          # Ambil semua caches dengan pagination
+          page=1
+          while true; do
+            echo "Mengambil halaman cache $page..."
+            caches_json=$(curl -s -H "Authorization: token $GH_TOKEN" \
+              "https://api.github.com/repos/$REPO/actions/caches?per_page=100&page=$page")
+            
+            cache_count=$(echo "$caches_json" | jq '.actions_caches | length')
+            if [ "$cache_count" -eq 0 ]; then
+              break
+            fi
+            
+            to_delete=$(echo "$caches_json" | jq -r --argjson keep "$KEEP_CACHES" '
+              .actions_caches
+              | sort_by(.last_accessed_at // .created_at)
+              | reverse
+              | to_entries
+              | .[] | select(.key >= ($keep | tonumber)) | .value.id
+            ')
+            
+            if [ -z "$to_delete" ]; then
+              echo "Tidak ada caches yang perlu dihapus di halaman ini."
+            else
+              while IFS= read -r cache_id; do
+                cache_info=$(echo "$caches_json" | jq -r --arg id "$cache_id" '.actions_caches[] | select(.id == ($id | tonumber)) | "\(.key) (Ref: \(.ref))"')
+                
+                # Check branch filter
+                if [ -n "$BRANCH" ]; then
+                  cache_ref=$(echo "$caches_json" | jq -r --arg id "$cache_id" '.actions_caches[] | select(.id == ($id | tonumber)) | .ref')
+                  if [[ "$cache_ref" != *"$BRANCH"* ]]; then
+                    echo "⊘ Skip cache (branch tidak cocok): $cache_info"
+                    continue
+                  fi
+                fi
+                
+                # Check pattern filter
+                if [ -n "$PATTERN" ]; then
+                  cache_key=$(echo "$caches_json" | jq -r --arg id "$cache_id" '.actions_caches[] | select(.id == ($id | tonumber)) | .key')
+                  if [[ "$cache_key" != *"$PATTERN"* ]]; then
+                    echo "⊘ Skip cache (pattern tidak cocok): $cache_info"
+                    continue
+                  fi
+                fi
+                
+                if [ "$DRY" = "true" ]; then
+                  echo "DRY RUN: akan menghapus cache ID=$cache_id | $cache_info"
+                else
+                  echo "Menghapus cache ID=$cache_id | $cache_info"
+                  if curl -s -X DELETE -H "Authorization: token $GH_TOKEN" \
+                    "https://api.github.com/repos/$REPO/actions/caches/$cache_id" > /dev/null 2>&1; then
+                    ((DELETED++)) || true
+                  else
+                    ((FAILED++)) || true
+                    echo "❌ Gagal menghapus cache ID=$cache_id"
+                  fi
+                fi
+              done <<< "$to_delete"
+            fi
+            
+            ((page++)) || true
+          done
+          
+          echo ""
+          echo "✓ Cleanup caches selesai"
+          echo "  - Dihapus: $DELETED"
+          echo "  - Gagal: $FAILED"
+          echo ""
+          
+          echo "CACHES_DELETED=$DELETED" >> $GITHUB_ENV
+          echo "CACHES_FAILED=$FAILED" >> $GITHUB_ENV
+
+      - name: Summary
+        run: |
+          echo "### 📊 Cleanup Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Konfigurasi:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Repository: \`${{ github.repository }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Dry-run: \`${{ inputs.dry_run }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Workflow Runs:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Menyimpan: ${{ inputs.keep_runs }} run terakhir" >> $GITHUB_STEP_SUMMARY
+          echo "- Dihapus: ${RUNS_DELETED:-0}" >> $GITHUB_STEP_SUMMARY
+          echo "- Gagal: ${RUNS_FAILED:-0}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Caches:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Menyimpan: ${{ inputs.keep_caches }} cache terakhir" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch filter: \`${{ inputs.branch || 'semua' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Pattern filter: \`${{ inputs.cache_key_pattern || 'semua' }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Dihapus: ${CACHES_DELETED:-0}" >> $GITHUB_STEP_SUMMARY
+          echo "- Gagal: ${CACHES_FAILED:-0}" >> $GITHUB_STEP_SUMMARY
